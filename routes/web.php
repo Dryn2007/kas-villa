@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ImageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -19,6 +20,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Routes untuk upload gambar
+    Route::post('/upload-profile-image', [ImageController::class, 'uploadProfileImage'])->name('upload.profile.image');
+    Route::post('/upload-file', [ImageController::class, 'uploadFile'])->name('upload.file');
 });
 
 // 2. Tambahkan Route khusus untuk Google Login di sini
