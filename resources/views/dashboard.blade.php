@@ -50,12 +50,12 @@
                 <form id="bulkPaymentForm" action="{{ route('dummy.pay.bulk') }}" method="POST" x-data="{ 
                     selected: [],
                     payableIds: {{ $payableIds->toJson() }},
-                    metode: 'online',
                     
                     submitForm(pilihan) {
-                        this.metode = pilihan;
-                        // Tunggu x-model / DOM update, lalu submit form
-                        $nextTick(() => { document.getElementById('bulkPaymentForm').submit(); });
+                        // Set metode dengan benar
+                        document.querySelector('input[name=metode]').value = pilihan;
+                        // Submit form
+                        document.getElementById('bulkPaymentForm').submit();
                     },
                     
                     toggle(id) {
@@ -63,11 +63,13 @@
                         let idx = this.payableIds.indexOf(id);
 
                         if (!this.selected.includes(idStr)) {
+                            // Jika dicentang: Centang juga semua yang sebelumnya
                             for(let i = 0; i <= idx; i++) {
                                 let curr = this.payableIds[i].toString();
                                 if(!this.selected.includes(curr)) this.selected.push(curr);
                             }
                         } else {
+                            // Jika dihapus: Hapus ini dan semua yang sesudahnya
                             for(let i = idx; i < this.payableIds.length; i++) {
                                 let curr = this.payableIds[i].toString();
                                 let pos = this.selected.indexOf(curr);
@@ -83,7 +85,7 @@
                         return this.selected.includes(prevId);
                     }
                 }" class="pb-28"> @csrf
-                    <input type="hidden" name="metode" :value="metode">
+                    <input type="hidden" name="metode" value="online">
                     
                     @foreach ($tagihanKk as $tagihan)
                         @if ($tagihan->status === 'lunas')
@@ -152,6 +154,10 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Hidden inputs untuk selected IDs -->
+                    <template x-for="id in selected" :key="id">
+                        <input type="hidden" name="selected[]" :value="id">
+                    </template>
                 </form>
             </div>
 

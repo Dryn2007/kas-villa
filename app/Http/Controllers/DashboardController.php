@@ -73,14 +73,16 @@ class DashboardController extends Controller
             ->get();
 
         $jumlahBulanYgMauDibayar = count($ids);
+        // Ambil ID yang SEHARUSNYA dibayar (harus berurutan dari yang paling awal)
         $idYangSah = $allUnpaid->take($jumlahBulanYgMauDibayar)->pluck('id')->toArray();
 
         $submittedIds = array_map('intval', $ids);
         sort($submittedIds);
         sort($idYangSah);
 
+        // Validasi: Apakah ID yang dikirim sesuai dengan urutan dari bulan paling awal?
         if ($submittedIds !== $idYangSah) {
-            return back()->with('error', 'Pembayaran harus berurutan! Jangan nge-cheat ya 😉');
+            return back()->with('error', 'Pembayaran harus berurutan dari bulan tertua! Jangan nge-cheat ya 😉');
         }
 
         // Tentukan status dan pesan berdasarkan tombol yang diklik
