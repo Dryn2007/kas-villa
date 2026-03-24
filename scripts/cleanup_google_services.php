@@ -41,20 +41,17 @@ if (is_dir($composerDir)) {
     $items = scandir($composerDir);
     foreach ($items as $item) {
         if ($item == '.' || $item == '..') continue;
-
+        
         $path = $composerDir . '/' . $item;
-        if (is_dir($path)) {
-            // Check if it looks like a hex string directory (common for temp folders)
-            // Or just delete ANY subdirectory in vendor/composer because normal composer files are in root of vendor/composer
-            // WAIT! verify content of vendor/composer. usually it only has .php and .json files.
-            // But sometimes it has `ca-bundle` or similar? No, usually not.
-            echo "Deleting junk directory in vendor/composer: $item\n";
-            deleteDirectory($path);
-        }
-    }
-}
+        
+        // Safety check: Don't delete metadata files
+        if (is_file($path)) continue;
 
-echo "Cleanup complete.\n";
+        // Delete any directory found here. Usually it's garbage.
+        echo "Deleting junk directory in vendor/composer: $item\n";
+        deleteDirectory($path);
+    }
+}echo "Cleanup complete.\n";
 
 function deleteDirectory($dir)
 {
