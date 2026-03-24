@@ -108,18 +108,14 @@ class DashboardController extends Controller
         }
 
         // JIKA ONLINE: Buat Invoice Duitku
+        // JIKA ONLINE: Buat Invoice Duitku
         if ($metode === 'online') {
             $merchantCode = env('DUITKU_MERCHANT_CODE');
             $merchantKey = env('DUITKU_MERCHANT_KEY');
 
             // Bikin Order ID unik (Misal: KAS-17091234-User1)
             $orderId = 'KAS-' . time() . '-' . Auth::id();
-
-            // Hitung total nominal langsung dari Database
-            $amount = Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
-
-            // Rumus rahasia Duitku (MD5)
-            $signature = md5($merchantCode . $orderId . $amount . $merchantKey);
+            $amount = $totalNominal ?? 0;
 
             // Hitung total nominal dari tagihan yang dipilih
             if (!isset($totalNominal)) {
@@ -135,12 +131,12 @@ class DashboardController extends Controller
                 $tagihan = Pembayaran::find($submittedIds[0]);
                 $bulanTeks = $this->getBulanTeks($tagihan->bulan_ke);
             } else {
-                // Trik Keren: Menampilkan "April 2026 s/d Juni 2026"
                 $tagihanAwal = Pembayaran::find($submittedIds[0]);
                 $tagihanAkhir = Pembayaran::find(end($submittedIds));
                 $bulanTeks = $this->getBulanTeks($tagihanAwal->bulan_ke) . ' s/d ' . $this->getBulanTeks($tagihanAkhir->bulan_ke);
             }
 
+            // PERBAIKAN: Format data yang lebih disukai Duitku
             $params = [
                 'merchantCode' => $merchantCode,
                 'paymentAmount' => $amount,
@@ -148,29 +144,44 @@ class DashboardController extends Controller
                 'productDetails' => 'Pembayaran Kas ' . $bulanTeks,
                 'email' => Auth::user()->email,
                 'customerVaName' => Auth::user()->name,
-                'phoneNumber' => Auth::user()->no_wa ?? '081234567890',
-                'returnUrl' => route('dashboard'), // Balik ke sini setelah bayar
-                'callbackUrl' => url('/api/duitku/callback'), // URL untuk robot Duitku lapor
+                // Cek nomor HP ketat: Kalau kosong/null, paksa pakai nomor dummy
+                'phoneNumber' => empty(Auth::user()->no_wa) ? '081234567890' : Auth::user()->no_wa,
+
+                // Duitku sering mewajibkan rincian item (itemDetails)
+                'itemDetails' => [
+                    [
+                        'name' => 'Kas ' . $bulanTeks,
+                        'price' => $amount,
+                        'quantity' => 1
+                    ]
+                ],
+
+                'returnUrl' => route('dashboard'),
+                'callbackUrl' => url('/api/duitku/callback'),
                 'signature' => $signature,
-                'expiryPeriod' => 60 // Expired dalam 60 menit
+                'expiryPeriod' => 60
             ];
 
-            // Tembak API Duitku
-            $response = Http::post('https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry', $params);
+            // PERBAIKAN: Gunakan endpoint createInvoice yang lebih stabil
+            $response = Http::post('https://api-sandbox.duitku.com/api/merchant/createInvoice', $params);
+
+            // Tangkap JSON aslinya
             $result = $response->json();
 
             if (isset($result['paymentUrl'])) {
-                // Simpan Order ID ke tagihan yang dipilih, ubah status jadi 'proses_online'
+                // Simpan Order ID ke tagihan
                 Pembayaran::whereIn('id', $submittedIds)->update([
                     'status' => 'proses_online',
                     'order_id' => $orderId,
                     'updated_at' => now()
                 ]);
 
-                // Lempar warga ke halaman kasir Duitku!
+                // Lempar ke Kasir Duitku!
                 return redirect($result['paymentUrl']);
             } else {
-                return back()->with('error', 'Gagal memproses Duitku: ' . ($result['statusMessage'] ?? 'Unknown Error'));
+                // TAMPILKAN ERROR ASLI DARI DUITKU AGAR KITA TAHU PENYEBABNYA
+                $errorAsli = $response->body();
+                return back()->with('error', 'Duitku Error: ' . $errorAsli);
             }
         }
     }
