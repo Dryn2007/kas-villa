@@ -104,7 +104,7 @@ class DashboardController extends Controller
                 'productDetails' => 'Pembayaran Iuran Kas',
                 'email' => $user->email,
                 'phoneNumber' => '081234567890', // Bisa disesuaikan dengan no hp user jika ada 
-                'customerVaName' => substr($user->name, 0, 20),
+                'customerVaName' => function_exists('mb_substr') ? mb_substr($user->name, 0, 20) : substr($user->name, 0, 20),
                 'itemDetails' => $items,
                 'customerDetail' => [
                     'firstName' => $user->name,

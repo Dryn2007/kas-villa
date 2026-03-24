@@ -76,18 +76,22 @@ class DuitkuService
             $result = $response->json();
 
             // Log request
-            Log::info('Duitku Create Invoice Request', [
-                'order_id' => $payload['merchantOrderId'],
-                'amount' => $payload['paymentAmount'],
-                'status_code' => $response->status()
-            ]);
+            try {
+                Log::info('Duitku Create Invoice Request', [
+                    'order_id' => $payload['merchantOrderId'],
+                    'amount' => $payload['paymentAmount'],
+                    'status_code' => $response->status()
+                ]);
+            } catch (\Throwable $err) {}
 
             return $result;
         } catch (\Exception $e) {
-            Log::error('Duitku API Error', [
-                'message' => $e->getMessage(),
-                'order_id' => $payload['merchantOrderId'] ?? 'unknown'
-            ]);
+            try {
+                Log::error('Duitku API Error', [
+                    'message' => $e->getMessage(),
+                    'order_id' => $payload['merchantOrderId'] ?? 'unknown'
+                ]);
+            } catch (\Throwable $err) {}
 
             return [
                 'statusCode' => '01',
@@ -195,10 +199,15 @@ class DuitkuService
                 ? 'https://api-prod.duitku.com/api/merchant/createInvoice'
                 : 'https://api-sandbox.duitku.com/api/merchant/createInvoice';
 
+            $payloadJson = json_encode($payload);
+            if ($payloadJson === false) {
+                throw new \Exception('JSON Encode Error: ' . json_last_error_msg());
+            }
+
             $headers = [
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-                'Content-Length' => strlen(json_encode($payload)),
+                'Content-Length' => (string) strlen($payloadJson),
                 'x-duitku-signature' => $signature,
                 'x-duitku-timestamp' => $timestamp,
                 'x-duitku-merchantcode' => $this->merchantCode
@@ -209,20 +218,28 @@ class DuitkuService
 
             $result = $response->json();
 
-            // Log request
-            Log::info('Duitku Create Invoice Pop Request', [
-                'order_id' => $payload['merchantOrderId'] ?? null,
-                'amount' => $payload['paymentAmount'] ?? null,
-                'status_code' => $response->status(),
-                'response' => $result
-            ]);
+            // Log request safely
+            try {
+                Log::info('Duitku Create Invoice Pop Request', [
+                    'order_id' => $payload['merchantOrderId'] ?? null,
+                    'amount' => $payload['paymentAmount'] ?? null,
+                    'status_code' => $response->status(),
+                    'response' => $result
+                ]);
+            } catch (\Throwable $loggingError) {
+                // Ignore if log fails on Vercel
+            }
 
             return $result;
-        } catch (\Exception $e) {
-            Log::error('Duitku API Pop Error', [
-                'message' => $e->getMessage(),
-                'order_id' => $payload['merchantOrderId'] ?? 'unknown'
-            ]);
+        } catch (\Throwable $e) {
+            try {
+                Log::error('Duitku API Pop Error', [
+                    'message' => $e->getMessage(),
+                    'order_id' => $payload['merchantOrderId'] ?? 'unknown'
+                ]);
+            } catch (\Throwable $loggingError) {
+                // If logging fails (e.g. read-only filesystem on Vercel), ignore so it doesn't crash the request
+            }
 
             return [
                 'statusCode' => '01',
