@@ -25,16 +25,28 @@
 
                     @if($kk->google_id)
                         <div
-                            class="p-4 rounded-2xl border-2 bg-gray-50 border-gray-200 opacity-60 flex justify-between items-center cursor-not-allowed">
-                            <span class="font-bold text-gray-500">Keluarga {{ $kk->name }}</span>
-                            <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                                        clip-rule="evenodd"></path>
+                            class="p-4 rounded-2xl border-2 bg-gray-50 border-gray-200 opacity-70 flex flex-col justify-center cursor-not-allowed">
+                            <div class="flex justify-between items-center w-full">
+                                <span class="font-bold text-gray-500">Keluarga {{ $kk->name }}</span>
+                                <span
+                                    class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded flex items-center gap-1 shadow-sm">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Terisi
+                                </span>
+                            </div>
+                            <div
+                                class="mt-2 flex items-center gap-1 text-xs text-gray-500 font-medium bg-white p-1.5 rounded-lg border border-gray-100 shadow-sm w-fit">
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                    </path>
                                 </svg>
-                                Terisi
-                            </span>
+                                {{ $kk->email }}
+                            </div>
                         </div>
                     @else
                         <button type="submit" name="kk_id" value="{{ $kk->id }}"

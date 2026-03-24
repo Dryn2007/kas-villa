@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="max-w-md mx-auto bg-gray-50 min-h-screen pb-12 font-sans">
+    <div x-data="{ downloadModal: false }" class="max-w-md mx-auto bg-gray-50 min-h-screen pb-12 font-sans">
 
         <div class="bg-teal-600 text-white p-6 rounded-b-3xl shadow-lg relative overflow-hidden">
             <div class="absolute top-0 right-0 opacity-10">
@@ -20,12 +20,17 @@
                     <p class="text-sm text-teal-50 mb-1">Total Terkumpul</p>
                     <div class="flex justify-between items-end mb-2">
                         <h2 class="text-2xl font-extrabold">Rp {{ number_format($totalTerkumpul, 0, ',', '.') }}</h2>
-                        <span class="text-sm font-medium">/ Rp 10.985k</span>
+                        <span class="text-sm font-medium">/ Rp {{ number_format($targetDana / 1000, 0, ',', '.') }}k</span>
                     </div>
                     <div class="w-full bg-teal-800 rounded-full h-3">
                         <div class="bg-yellow-400 h-3 rounded-full" style="width: {{ $persentase }}%"></div>
                     </div>
                 </div>
+
+                <button @click="downloadModal = true" class="mt-4 w-full bg-yellow-400 border border-yellow-300 hover:bg-yellow-500 text-teal-900 font-extrabold py-2.5 px-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Unduh Laporan Kas
+                </button>
             </div>
         </div>
 
@@ -116,7 +121,7 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <p class="font-bold text-gray-800">Bulan {{ $tagihan->bulan_ke }}</p>
+                                        <p class="font-bold text-gray-800">{{ \Carbon\Carbon::create(2026, 3)->addMonths($tagihan->bulan_ke)->translatedFormat('F Y') }}</p>
                                         <p class="text-xs text-gray-500">Rp {{ number_format($tagihan->nominal, 0, ',', '.') }}</p>
                                     </div>
                                 </div>
@@ -132,7 +137,7 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <p class="font-bold text-gray-800">Bulan {{ $tagihan->bulan_ke }}</p>
+                                        <p class="font-bold text-gray-800">{{ \Carbon\Carbon::create(2026, 3)->addMonths($tagihan->bulan_ke)->translatedFormat('F Y') }}</p>
                                         <p class="text-xs text-gray-500">Rp {{ number_format($tagihan->nominal, 0, ',', '.') }}</p>
                                     </div>
                                 </div>
@@ -169,7 +174,7 @@
                                         class="hidden">
                                         
                                     <div>
-                                        <p class="font-bold text-gray-800 text-lg">Bulan {{ $tagihan->bulan_ke }}</p>
+                                        <p class="font-bold text-gray-800 text-lg">{{ \Carbon\Carbon::create(2026, 3)->addMonths($tagihan->bulan_ke)->translatedFormat('F Y') }}</p>
                                         <p class="text-sm text-gray-500">Rp {{ number_format($tagihan->nominal, 0, ',', '.') }}</p>
                                     </div>
                                 </div>
@@ -323,7 +328,7 @@
                                 </div>
                                 <div>
                                     <p class="font-bold text-gray-800 text-sm">{{ $history->user->name }}</p>
-                                    <p class="text-xs text-gray-500">Membayar Bulan ke-{{ $history->bulan_ke }}</p>
+                                    <p class="text-xs text-gray-500">Membayar {{ \Carbon\Carbon::create(2026, 3)->addMonths($history->bulan_ke)->translatedFormat('F Y') }}</p>
                                 </div>
                             </div>
                             <div class="text-right flex flex-col items-end">
@@ -339,5 +344,117 @@
             </div>
 
         @endif
+
+        <!-- Modal Unduh Laporan -->
+        <div x-show="downloadModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                <div class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm" @click="downloadModal = false"></div>
+
+                <div class="relative inline-block w-full max-w-sm p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl sm:my-8"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                    
+                    <div class="flex justify-between items-center border-b border-gray-100 pb-3 mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Unduh Laporan
+                        </h3>
+                        <button @click="downloadModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    <form id="downloadForm" method="GET" target="_blank" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Pilih Keluarga (KK)</label>
+                            <div class="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-gray-50">
+                                <label class="flex items-center gap-2 p-2 hover:bg-teal-50 rounded-lg cursor-pointer transition-colors">
+                                    <input type="checkbox" name="kk_ids[]" value="all" checked class="rounded text-teal-600 focus:ring-teal-500 bg-white border-gray-300 w-4 h-4">
+                                    <span class="text-sm font-bold text-gray-800">Semua Keluarga</span>
+                                </label>
+                                <!-- Kita bisa ambil dari global atau controller. Di dashboard sudah ada $semuaKk untuk grid di else condition -->
+                                <!-- Khusus jika di dalam menu user $semuaKk mungkin tidak ada (kita pakai App\Models\User::all()) -->
+                                @php $users_for_export = \App\Models\User::all(); @endphp
+                                @foreach($users_for_export as $u)
+                                <label class="flex items-center gap-2 p-2 hover:bg-teal-50 rounded-lg cursor-pointer transition-colors">
+                                    <input type="checkbox" name="kk_ids[]" value="{{ $u->id }}" class="rounded text-teal-600 focus:ring-teal-500 bg-white border-gray-300 w-4 h-4 kk-checkbox">
+                                    <span class="text-sm font-medium text-gray-700">{{ $u->name }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Dari Bulan</label>
+                                <select name="start_bulan" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm">
+                                    @for($i = 1; $i <= 14; $i++)
+                                        <option value="{{ $i }}">{{ \Carbon\Carbon::create(2026, 3)->addMonths($i)->translatedFormat('F Y') }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Sampai Bulan</label>
+                                <select name="end_bulan" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm">
+                                    @for($i = 1; $i <= 14; $i++)
+                                        <option value="{{ $i }}" {{ $i == 14 ? 'selected' : '' }}>{{ \Carbon\Carbon::create(2026, 3)->addMonths($i)->translatedFormat('F Y') }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="document.getElementById('downloadForm').action='{{ route('export.pdf') }}'; document.getElementById('downloadForm').submit(); downloadModal = false;" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2 border border-red-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                PDF
+                            </button>
+                            <button type="button" onclick="document.getElementById('downloadForm').action='{{ route('export.excel') }}'; document.getElementById('downloadForm').submit(); downloadModal = false;" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2 border border-green-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                Excel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <!-- Script to uncheck 'all' if specific is checked, and vice versa -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const allCheckbox = document.querySelector('input[value="all"]');
+            const kkCheckboxes = document.querySelectorAll('.kk-checkbox');
+
+            allCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    kkCheckboxes.forEach(cb => cb.checked = false);
+                }
+            });
+
+            kkCheckboxes.forEach(cb => {
+                cb.addEventListener('change', function() {
+                    if (this.checked) {
+                        allCheckbox.checked = false;
+                    } else {
+                        // Check if all are unchecked, then check 'all' again
+                        let anyChecked = Array.from(kkCheckboxes).some(c => c.checked);
+                        if (!anyChecked) {
+                            allCheckbox.checked = true;
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 </x-app-layout>

@@ -29,7 +29,7 @@
                         </div>
                         <div>
                             <p class="font-bold text-gray-800 text-sm">{{ $history->user->name }}</p>
-                            <p class="text-xs text-gray-500">Membayar Bulan ke-{{ $history->bulan_ke }}</p>
+                            <p class="text-xs text-gray-500">Membayar {{ \Carbon\Carbon::create(2026, 3)->addMonths($history->bulan_ke)->translatedFormat('F Y') }}</p>
                         </div>
                     </div>
                     <div class="text-right flex flex-col items-end">

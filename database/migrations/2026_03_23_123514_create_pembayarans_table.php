@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('pembayarans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // Relasi ke KK
-            $table->integer('bulan_ke'); // Angka 1 sampai 13
+            $table->integer('bulan_ke'); // Angka 1 sampai 14 (Sesuai update Mei 2027)
             $table->integer('nominal')->default(65000);
             $table->enum('status', ['belum', 'proses', 'lunas'])->default('belum');
             $table->string('order_id')->nullable(); // Kode unik untuk Payment Gateway

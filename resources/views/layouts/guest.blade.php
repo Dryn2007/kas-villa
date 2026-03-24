@@ -6,7 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <title>Kas Villa - Sistem Pembayaran Kel H Solichin</title>
+
+    <!-- Meta Tags (Open Graph) untuk WhatsApp, Facebook, dll -->
+    <meta property="og:title" content="Kas Villa - Sistem Pembayaran Kel H Solichin">
+    <meta property="og:description" content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
+    <meta property="og:image" content="{{ asset('images/thumbnail.webp') }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:type" content="website">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">

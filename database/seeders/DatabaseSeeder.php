@@ -14,21 +14,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Daftar 13 Kepala Keluarga / Perwakilan
+        // Daftar Kepala Keluarga / Perwakilan
         $daftarKk = [
-            'Adrian Adiputra', // Data pertama kita jadikan Admin
-            'Dhani',
-            'Apip',
-            'Reni',
-            'Sopi',
-            'Antonius Iwayan',
-            'Aziz Khasyi',
-            'Juan Farrel',
-            'Rezezi Axcel',
-            'Keluarga Pak Budi',
-            'Keluarga Pak Andi',
-            'Keluarga Bu Siti',
-            'Keluarga Pak Joko'
+            'Adrian Adiputra', // Admin
+            'Heri',
+            'Yadi',
+            'Citra',
+            'Ria',
+            'Siti',
+            'Sutris',
+            'Wulan',
+            'Lintang',
+            'Lek Sri',
+            'Sari',
+            'Hadi',
+            'Ratih'
         ];
 
         foreach ($daftarKk as $index => $nama) {
@@ -47,8 +47,8 @@ class DatabaseSeeder extends Seeder
                 'no_wa' => '08123456789' . $index,
             ]);
 
-            // 2. Langsung buatkan tagihan 13 bulan untuk tiap KK yang baru dibuat
-            for ($bulan = 1; $bulan <= 13; $bulan++) {
+            // 2. Langsung buatkan tagihan 14 bulan untuk tiap KK yang baru dibuat
+            for ($bulan = 1; $bulan <= 14; $bulan++) {
                 Pembayaran::create([
                     'user_id' => $user->id,
                     'bulan_ke' => $bulan,

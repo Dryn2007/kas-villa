@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\ExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -42,5 +43,11 @@ Route::get('/riwayat-lengkap', [DashboardController::class, 'history'])->name('r
 Route::get('/admin-panel', [AdminController::class, 'index'])->name('admin.index');
 Route::post('/admin-panel/approve/{id}', [AdminController::class, 'approve'])->name('admin.approve');
 Route::post('/admin-panel/reject/{id}', [AdminController::class, 'reject'])->name('admin.reject');
+Route::post('/admin-panel/add-kk', [AdminController::class, 'addKk'])->name('admin.addKk');
+Route::delete('/admin-panel/delete-kk/{id}', [AdminController::class, 'deleteKk'])->name('admin.deleteKk');
+Route::post('/admin-panel/manual-pay/{id}', [AdminController::class, 'manualPay'])->name('admin.manualPay');
+
+Route::get('/export/pdf', [ExportController::class, 'exportPdf'])->name('export.pdf')->middleware('auth');
+Route::get('/export/excel', [ExportController::class, 'exportExcel'])->name('export.excel')->middleware('auth');
 
 require __DIR__ . '/auth.php';

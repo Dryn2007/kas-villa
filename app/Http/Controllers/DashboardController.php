@@ -15,8 +15,9 @@ class DashboardController extends Controller
 
         // Data global untuk Progress Bar di Header
         $totalTerkumpul = Pembayaran::where('status', 'lunas')->sum('nominal');
-        $targetDana = 10985000;
-        $persentase = ($totalTerkumpul / $targetDana) * 100;
+        $userCount = User::count();
+        $targetDana = $userCount * 14 * 65000;
+        $persentase = $targetDana > 0 ? ($totalTerkumpul / $targetDana) * 100 : 0;
 
         // KONDISI 1: Jika salah satu kotak KK diklik (URL: ?kk_id=...)
         if ($request->has('kk_id')) {
