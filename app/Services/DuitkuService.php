@@ -82,7 +82,8 @@ class DuitkuService
                     'amount' => $payload['paymentAmount'],
                     'status_code' => $response->status()
                 ]);
-            } catch (\Throwable $err) {}
+            } catch (\Throwable $err) {
+            }
 
             return $result;
         } catch (\Exception $e) {
@@ -91,7 +92,8 @@ class DuitkuService
                     'message' => $e->getMessage(),
                     'order_id' => $payload['merchantOrderId'] ?? 'unknown'
                 ]);
-            } catch (\Throwable $err) {}
+            } catch (\Throwable $err) {
+            }
 
             return [
                 'statusCode' => '01',

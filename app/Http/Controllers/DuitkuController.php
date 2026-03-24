@@ -28,7 +28,10 @@ class DuitkuController extends Controller
                     $pembayarans = Pembayaran::where('order_id', $merchantOrderId)->get();
 
                     if ($pembayarans->isEmpty()) {
-                        try { Log::warning('Duitku Callback - Order ID tidak ditemukan: ' . $merchantOrderId); } catch (\Throwable $e) {}
+                        try {
+                            Log::warning('Duitku Callback - Order ID tidak ditemukan: ' . $merchantOrderId);
+                        } catch (\Throwable $e) {
+                        }
                         return response()->json(['error' => 'Order ID not found'], 404);
                     }
 
@@ -42,7 +45,10 @@ class DuitkuController extends Controller
                                 ]);
                             }
                         }
-                        try { Log::info('Duitku Callback - Payment Success: ' . $merchantOrderId); } catch (\Throwable $e) {}
+                        try {
+                            Log::info('Duitku Callback - Payment Success: ' . $merchantOrderId);
+                        } catch (\Throwable $e) {
+                        }
                     } else {
                         // Failed
                         foreach ($pembayarans as $pembayaran) {
@@ -50,20 +56,32 @@ class DuitkuController extends Controller
                                 $pembayaran->update(['status' => 'belum']);
                             }
                         }
-                        try { Log::info('Duitku Callback - Payment Failed: ' . $merchantOrderId . ' dengan kode ' . $resultCode); } catch (\Throwable $e) {}
+                        try {
+                            Log::info('Duitku Callback - Payment Failed: ' . $merchantOrderId . ' dengan kode ' . $resultCode);
+                        } catch (\Throwable $e) {
+                        }
                     }
 
                     return response('00', 200); // 200 OK untuk menghentikan callback retry dari service
                 } else {
-                    try { Log::error('Duitku Callback - Bad Signature: ' . $merchantOrderId); } catch (\Throwable $e) {}
+                    try {
+                        Log::error('Duitku Callback - Bad Signature: ' . $merchantOrderId);
+                    } catch (\Throwable $e) {
+                    }
                     return response()->json(['error' => 'Bad Signature'], 400);
                 }
             } else {
-                try { Log::error('Duitku Callback - Bad Parameter', $request->all()); } catch (\Throwable $e) {}
+                try {
+                    Log::error('Duitku Callback - Bad Parameter', $request->all());
+                } catch (\Throwable $e) {
+                }
                 return response()->json(['error' => 'Bad Parameter'], 400);
             }
         } catch (\Throwable $err) {
-            try { Log::error('Duitku Callback Error: ' . $err->getMessage()); } catch (\Throwable $e) {}
+            try {
+                Log::error('Duitku Callback Error: ' . $err->getMessage());
+            } catch (\Throwable $e) {
+            }
             return response()->json(['error' => 'Internal Server Error'], 500);
         }
     }
