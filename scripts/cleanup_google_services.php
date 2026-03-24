@@ -52,6 +52,27 @@ if (is_dir($composerDir)) {
         deleteDirectory($path);
     }
 }
+// Run final check to ensure we didn't fail silently
+$servicesDirSize = 0;
+if (is_dir($servicesDir)) {
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($servicesDir)) as $file) {
+        $servicesDirSize += $file->getSize();
+    }
+}
+
+echo "Google Client Services Size After CLEANUP: " . number_format($servicesDirSize / 1024 / 1024, 2) . " MB\n";
+
+if ($servicesDirSize > 10 * 1024 * 1024) { // 10MB limit
+    echo "ERROR: Google Services Cleanup FAILED! Size is still too large ($servicesDirSize bytes).\n";
+    // exit(1); 
+    // Commented out exit(1) to try to deploy anyway, but warn loudly.
+    // If we exit(1), Vercel build will fail, which is good for debugging but bad for deployment.
+    // Actually, fail the build so user sees the log immediately.
+    exit(1);
+} else {
+    echo "SUCCESS: Google Services Cleanup Passed.\n";
+}
+
 echo "Cleanup complete.\n";
 
 function deleteDirectory($dir)
