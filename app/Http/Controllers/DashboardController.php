@@ -112,21 +112,17 @@ class DashboardController extends Controller
             $merchantCode = env('DUITKU_MERCHANT_CODE');
             $merchantKey = env('DUITKU_MERCHANT_KEY');
 
-            // 🚨 DETEKSI ERROR: Cek apakah kunci rahasia terbaca!
             if (empty($merchantCode) || empty($merchantKey)) {
-                return back()->with('error', 'Gagal: Kunci Duitku tidak terbaca! Pastikan sudah di-set di .env atau Vercel Environment.');
+                return back()->with('error', 'Kunci Duitku kosong! Cek file .env atau Vercel Variables.');
             }
 
             // Bikin Order ID unik (Misal: KAS-17091234-User1)
             $orderId = 'KAS-' . time() . '-' . Auth::id();
 
-            // 🚨 PERBAIKAN: Paksa nominal menjadi angka murni (Integer)
+            // Nominal wajib angka murni
             $amount = (int) Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
 
-            // Rumus rahasia Duitku (MD5)
-            $signature = md5($merchantCode . $orderId . $amount . $merchantKey);
-
-            // Tentukan bulan teks untuk Invoice Duitku
+            // Tentukan bulan teks
             if (count($submittedIds) === 1) {
                 $tagihan = Pembayaran::find($submittedIds[0]);
                 $bulanTeks = $this->getBulanTeks($tagihan->bulan_ke);
@@ -136,6 +132,12 @@ class DashboardController extends Controller
                 $bulanTeks = $this->getBulanTeks($tagihanAwal->bulan_ke) . ' s/d ' . $this->getBulanTeks($tagihanAkhir->bulan_ke);
             }
 
+            // 🚨 PERBAIKAN UTAMA: Waktu & Tanda Tangan (Signature) versi Baru Duitku
+            $timestamp = round(microtime(true) * 1000); // Wajib 13 Digit Milidetik
+            $signature = hash('sha256', $merchantCode . $timestamp . $merchantKey); // Wajib SHA-256
+
+            $userPhone = empty(Auth::user()->no_wa) ? '081234567890' : Auth::user()->no_wa;
+
             $params = [
                 'merchantCode' => $merchantCode,
                 'paymentAmount' => $amount,
@@ -143,9 +145,9 @@ class DashboardController extends Controller
                 'productDetails' => 'Pembayaran Kas ' . $bulanTeks,
                 'email' => Auth::user()->email,
                 'customerVaName' => Auth::user()->name,
-                'phoneNumber' => empty(Auth::user()->no_wa) ? '081234567890' : Auth::user()->no_wa,
+                'phoneNumber' => $userPhone,
 
-                // Rincian item
+                // Duitku API baru sering mewajibkan rincian keranjang (itemDetails)
                 'itemDetails' => [
                     [
                         'name' => 'Kas ' . $bulanTeks,
@@ -153,15 +155,25 @@ class DashboardController extends Controller
                         'quantity' => 1
                     ]
                 ],
-
+                // Info Pelanggan Detail
+                'customerDetail' => [
+                    'firstName' => Auth::user()->name,
+                    'lastName' => '',
+                    'email' => Auth::user()->email,
+                    'phoneNumber' => $userPhone,
+                ],
                 'returnUrl' => route('dashboard'),
                 'callbackUrl' => url('/api/duitku/callback'),
-                'signature' => $signature,
                 'expiryPeriod' => 60
             ];
 
-            // 🚨 PERBAIKAN URL: Pastikan huruf kecil semua di tulisan 'createinvoice'
-            $response = Http::post('https://api-sandbox.duitku.com/api/merchant/createinvoice', $params);
+            // 🚨 PERBAIKAN UTAMA 2: Kirim Header Khusus ke Endpoint Baru
+            $response = Http::withHeaders([
+                'x-duitku-signature' => $signature,
+                'x-duitku-timestamp' => $timestamp,
+                'x-duitku-merchantcode' => $merchantCode,
+            ])->post('https://api-sandbox.duitku.com/api/merchant/createInvoice', $params);
+
             $result = $response->json();
 
             // Pengecekan status dari Duitku
@@ -176,7 +188,7 @@ class DashboardController extends Controller
                 // Lempar ke Kasir Duitku!
                 return redirect($result['paymentUrl']);
             } else {
-                // Jika masih error, tampilkan kode error aslinya agar kita tahu
+                // Tampilkan pesan asli kalau masih gagal
                 $pesanError = $result['Message'] ?? $result['statusMessage'] ?? $response->body();
                 return back()->with('error', 'Duitku Error: ' . $pesanError);
             }
