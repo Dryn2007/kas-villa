@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build && php scripts/cleanup_google_services.php",
+        "build": "vite build",
         "dev": "vite"
     },
     "devDependencies": {
