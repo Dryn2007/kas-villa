@@ -1,4 +1,4 @@
-/node*modules
+dcd/node*modules
 /storage/*.key
 /storage/app
 /storage/framework/cache
