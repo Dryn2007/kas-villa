@@ -133,10 +133,11 @@ class DashboardController extends Controller
                     $bulanTeks = $this->getBulanTeks($tagihanAwal->bulan_ke) . ' s/d ' . $this->getBulanTeks($tagihanAkhir->bulan_ke);
                 }
 
-                // Rumus API Standar Duitku yang paling aman
+                // Rumus API untuk Create Invoice (Payment Link) -> pakai MD5 biasa
                 $signature = md5($merchantCode . $orderId . $amount . $merchantKey);
                 $userPhone = empty(Auth::user()->no_wa) ? '081234567890' : Auth::user()->no_wa;
 
+                // Parameter khusus untuk Payment Link / Hosted Page
                 $params = [
                     'merchantCode' => $merchantCode,
                     'paymentAmount' => $amount,
@@ -145,14 +146,27 @@ class DashboardController extends Controller
                     'email' => Auth::user()->email,
                     'customerVaName' => Auth::user()->name,
                     'phoneNumber' => $userPhone,
+                    'itemDetails' => [
+                        [
+                            'name' => 'Kas ' . $bulanTeks,
+                            'price' => $amount,
+                            'quantity' => 1
+                        ]
+                    ],
+                    'customerDetail' => [
+                        'firstName' => Auth::user()->name,
+                        'lastName' => '',
+                        'email' => Auth::user()->email,
+                        'phoneNumber' => $userPhone,
+                    ],
                     'returnUrl' => route('dashboard'),
                     'callbackUrl' => url('/api/duitku/callback'),
                     'signature' => $signature,
                     'expiryPeriod' => 60
                 ];
 
-                // Tembak API dengan batas waktu (Timeout) agar Vercel tidak nge-hang
-                $response = Http::timeout(10)->post('https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry', $params);
+                // KITA PINDAH JALUR KE SINI: createInvoice
+                $response = Http::timeout(10)->post('https://api-sandbox.duitku.com/api/merchant/createInvoice', $params);
                 $result = $response->json();
 
                 if ($response->successful() && isset($result['paymentUrl'])) {
@@ -163,14 +177,14 @@ class DashboardController extends Controller
                         'updated_at' => now()
                     ]);
 
+                    // TERBANG KE HALAMAN DUITKU 🚀
                     return redirect($result['paymentUrl']);
                 } else {
-                    // Kalau Duitku menolak, tangkap alasan aslinya
+                    // Tangkap alasan kalau masih ditolak
                     $pesanError = $result['statusMessage'] ?? $result['Message'] ?? $response->body();
                     return back()->with('error', 'Duitku Menolak: ' . $pesanError);
                 }
             } catch (\Exception $e) {
-                // 🚨 INI PENYELAMATNYA! Kalau terjadi error PHP, web tidak akan mati 500
                 return back()->with('error', 'Sistem Gagal: ' . $e->getMessage());
             }
         }
