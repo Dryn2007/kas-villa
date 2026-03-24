@@ -40,9 +40,6 @@ Route::post('pilih-kk', [GoogleController::class, 'claimKk'])->name('claim-kk');
 Route::post('/dummy-pay-bulk', [DashboardController::class, 'dummyPayBulk'])->name('dummy.pay.bulk');
 Route::get('/riwayat-lengkap', [DashboardController::class, 'history'])->name('riwayat');
 
-// Route Callback untuk Duitku (Public - tanpa CSRF)
-Route::post('/api/duitku/callback', [DashboardController::class, 'duitkuCallback'])->withoutMiddleware('VerifyCsrfToken');
-
 // Route Khusus Admin
 Route::get('/admin-panel', [AdminController::class, 'index'])->name('admin.index');
 Route::post('/admin-panel/approve/{id}', [AdminController::class, 'approve'])->name('admin.approve');
@@ -53,7 +50,5 @@ Route::post('/admin-panel/manual-pay/{id}', [AdminController::class, 'manualPay'
 
 Route::get('/export/pdf', [ExportController::class, 'exportPdf'])->name('export.pdf')->middleware('auth');
 Route::get('/export/excel', [ExportController::class, 'exportExcel'])->name('export.excel')->middleware('auth');
-
-Route::post('/duitku/callback', [DashboardController::class, 'duitkuCallback']);
 
 require __DIR__ . '/auth.php';

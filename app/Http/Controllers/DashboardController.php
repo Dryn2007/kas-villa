@@ -4,11 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use App\Models\Pembayaran;
 use App\Models\User;
-use Carbon\Carbon; // <-- Tambahan untuk manipulasi waktu
 
 class DashboardController extends Controller
 {
@@ -18,9 +15,8 @@ class DashboardController extends Controller
 
         // Data global untuk Progress Bar di Header
         $totalTerkumpul = Pembayaran::where('status', 'lunas')->sum('nominal');
-        $userCount = User::count();
-        $targetDana = $userCount * 14 * 65000;
-        $persentase = $targetDana > 0 ? ($totalTerkumpul / $targetDana) * 100 : 0;
+        $targetDana = 10985000;
+        $persentase = ($totalTerkumpul / $targetDana) * 100;
 
         // KONDISI 1: Jika salah satu kotak KK diklik (URL: ?kk_id=...)
         if ($request->has('kk_id')) {
@@ -77,152 +73,29 @@ class DashboardController extends Controller
             ->get();
 
         $jumlahBulanYgMauDibayar = count($ids);
-        // Ambil ID yang SEHARUSNYA dibayar (harus berurutan dari yang paling awal)
         $idYangSah = $allUnpaid->take($jumlahBulanYgMauDibayar)->pluck('id')->toArray();
 
         $submittedIds = array_map('intval', $ids);
         sort($submittedIds);
         sort($idYangSah);
 
-        // Validasi: Apakah ID yang dikirim sesuai dengan urutan dari bulan paling awal?
-        // Relax validasi untuk pembayaran online (boleh 1 bulan), tapi tetap enforce sequential untuk tunai
-        if ($metode === 'tunai' && $submittedIds !== $idYangSah) {
-            return back()->with('error', 'Pembayaran tunai harus berurutan dari bulan tertua! Jangan nge-cheat ya 😉');
+        if ($submittedIds !== $idYangSah) {
+            return back()->with('error', 'Pembayaran harus berurutan! Jangan nge-cheat ya 😉');
         }
 
-        // Untuk online, validasi hanya untuk 2+ bulan
-        if ($metode === 'online' && count($submittedIds) >= 2 && $submittedIds !== $idYangSah) {
-            return back()->with('error', 'Pembayaran online untuk 2+ bulan harus berurutan dari bulan tertua!');
-        }
+        // Tentukan status dan pesan berdasarkan tombol yang diklik
+        $statusBaru = $metode === 'tunai' ? 'proses' : 'lunas';
+        $pesan = $metode === 'tunai'
+            ? 'Sip! ' . count($submittedIds) . ' bulan tagihan sedang menunggu konfirmasi Admin. ⏳'
+            : 'Hore! ' . count($submittedIds) . ' bulan tagihan berhasil dilunasi via Online! 🎉';
 
-        // JIKA TUNAI: Tandai sebagai menunggu konfirmasi admin
-        if ($metode === 'tunai') {
-            // Update ke database
-            Pembayaran::whereIn('id', $submittedIds)->update([
-                'status' => 'proses',
-                'updated_at' => now()
-            ]);
+        // Update ke database
+        Pembayaran::whereIn('id', $submittedIds)->update([
+            'status' => $statusBaru,
+            'updated_at' => now()
+        ]);
 
-            $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan sedang menunggu konfirmasi Admin. ⏳';
-            return back()->with('success', $pesan);
-        }
-
-        // JIKA ONLINE: Buat Invoice Duitku
-        if ($metode === 'online') {
-            try {
-                $merchantCode = env('DUITKU_MERCHANT_CODE');
-                $merchantKey = env('DUITKU_MERCHANT_KEY');
-
-                if (empty($merchantCode) || empty($merchantKey)) {
-                    return back()->with('error', 'Kunci Duitku kosong! Pastikan sudah diisi di Vercel.');
-                }
-
-                // Bikin Order ID unik
-                $orderId = 'KAS-' . time() . '-' . Auth::id();
-
-                // Nominal wajib angka murni (Integer)
-                $amount = (int) Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
-
-                // Tentukan bulan teks
-                if (count($submittedIds) === 1) {
-                    $tagihan = Pembayaran::find($submittedIds[0]);
-                    $bulanTeks = $this->getBulanTeks($tagihan->bulan_ke);
-                } else {
-                    $tagihanAwal = Pembayaran::find($submittedIds[0]);
-                    $tagihanAkhir = Pembayaran::find(end($submittedIds));
-                    $bulanTeks = $this->getBulanTeks($tagihanAwal->bulan_ke) . ' s/d ' . $this->getBulanTeks($tagihanAkhir->bulan_ke);
-                }
-
-                // Rumus API untuk Create Invoice (Payment Link) -> pakai MD5 biasa
-                $signature = md5($merchantCode . $orderId . $amount . $merchantKey);
-                $userPhone = empty(Auth::user()->no_wa) ? '081234567890' : Auth::user()->no_wa;
-
-                // Parameter khusus untuk Payment Link / Hosted Page
-                $params = [
-                    'merchantCode' => $merchantCode,
-                    'paymentAmount' => $amount,
-                    'merchantOrderId' => $orderId,
-                    'productDetails' => 'Pembayaran Kas ' . $bulanTeks,
-                    'email' => Auth::user()->email,
-                    'customerVaName' => Auth::user()->name,
-                    'phoneNumber' => $userPhone,
-                    'itemDetails' => [
-                        [
-                            'name' => 'Kas ' . $bulanTeks,
-                            'price' => $amount,
-                            'quantity' => 1
-                        ]
-                    ],
-                    'customerDetail' => [
-                        'firstName' => Auth::user()->name,
-                        'lastName' => '',
-                        'email' => Auth::user()->email,
-                        'phoneNumber' => $userPhone,
-                    ],
-                    'returnUrl' => route('dashboard'),
-                    'callbackUrl' => url('/api/duitku/callback'),
-                    'signature' => $signature,
-                    'expiryPeriod' => 60
-                ];
-
-                // DEBUG: Log request sebelum dikirim
-                Log::info('Duitku CreateInvoice Request', [
-                    'endpoint' => 'https://api-sandbox.duitku.com/api/merchant/createInvoice',
-                    'merchantCode' => $merchantCode,
-                    'orderId' => $orderId,
-                    'amount' => $amount,
-                    'amountType' => gettype($amount),
-                    'signature' => $signature,
-                    'email' => Auth::user()->email,
-                    'phoneNumber' => $userPhone
-                ]);
-
-                // KITA PINDAH JALUR KE SINI: createInvoice
-                $response = Http::timeout(10)->post('https://api-sandbox.duitku.com/api/merchant/createInvoice', $params);
-                $result = $response->json();
-
-                // DEBUG: Log response dari Duitku
-                Log::info('Duitku CreateInvoice Response', [
-                    'statusCode' => $response->status(),
-                    'successful' => $response->successful(),
-                    'response' => $result,
-                    'body' => $response->body()
-                ]);
-
-                if ($response->successful() && isset($result['paymentUrl'])) {
-                    // Berhasil! Simpan dan alihkan ke Kasir
-                    Pembayaran::whereIn('id', $submittedIds)->update([
-                        'status' => 'proses_online',
-                        'order_id' => $orderId,
-                        'updated_at' => now()
-                    ]);
-
-                    Log::info('Duitku Payment Success', [
-                        'orderId' => $orderId,
-                        'amount' => $amount,
-                        'paymentUrl' => $result['paymentUrl']
-                    ]);
-
-                    // TERBANG KE HALAMAN DUITKU 🚀
-                    return redirect($result['paymentUrl']);
-                } else {
-                    // Tangkap alasan kalau masih ditolak
-                    $pesanError = $result['statusMessage'] ?? $result['Message'] ?? $response->body();
-
-                    Log::error('Duitku Payment Failed', [
-                        'orderId' => $orderId,
-                        'amount' => $amount,
-                        'statusCode' => $response->status(),
-                        'error' => $pesanError,
-                        'fullResponse' => $result
-                    ]);
-
-                    return back()->with('error', 'Duitku Menolak: ' . $pesanError);
-                }
-            } catch (\Exception $e) {
-                return back()->with('error', 'Sistem Gagal: ' . $e->getMessage());
-            }
-        }
+        return back()->with('success', $pesan);
     }
 
     // Fungsi untuk Halaman Riwayat Semua Pembayaran
@@ -234,74 +107,5 @@ class DashboardController extends Controller
             ->paginate(15);
 
         return view('history', compact('semuaHistory'));
-    }
-
-    // Helper function untuk konversi bulan_ke ke nama bulan & tahun asli
-    private function getBulanTeks($bulanKe)
-    {
-        // Start date: 1 Maret 2026. 
-        // Jika $bulanKe = 1, maka ditambah 1 bulan -> 1 April 2026
-        // Jika $bulanKe = 14, maka ditambah 14 bulan -> 1 Mei 2027
-        return Carbon::create(2026, 3, 1)->addMonths($bulanKe)->translatedFormat('F Y');
-    }
-
-    // Callback dari Duitku untuk notifikasi pembayaran
-    public function duitkuCallback(Request $request)
-    {
-        $merchantCode = env('DUITKU_MERCHANT_CODE');
-        $merchantKey = env('DUITKU_MERCHANT_KEY');
-
-        // Terima data dari Duitku
-        $orderId = $request->input('merchantOrderId');
-        $statusCode = $request->input('statusCode');
-        $resultCode = $request->input('resultCode');
-        $signature = $request->input('signature');
-        $amount = $request->input('amount');
-
-        // Validasi signature untuk memastikan request dari Duitku yang asli
-        $expectedSignature = md5($merchantCode . $orderId . $amount . $merchantKey);
-
-        if ($signature !== $expectedSignature) {
-            return response()->json(['message' => 'Invalid signature'], 400);
-        }
-
-        // Jika pembayaran berhasil (resultCode == '00')
-        if ($resultCode === '00') {
-            // Cari tagihan dengan order_id ini
-            // Gunakan where() dan update() massal karena 1 order_id bisa untuk beberapa bulan
-            $pembayaranTerkait = Pembayaran::where('order_id', $orderId)->get();
-
-            if ($pembayaranTerkait->count() > 0) {
-                // Update semua yang terhubung dengan order_id ini menjadi lunas
-                Pembayaran::where('order_id', $orderId)->update([
-                    'status' => 'lunas',
-                    'updated_at' => now()
-                ]);
-
-                // Log transaksi sukses
-                Log::info('Duitku Payment Success', [
-                    'order_id' => $orderId,
-                    'amount' => $amount,
-                    'timestamp' => now()
-                ]);
-
-                return response()->json(['message' => 'Payment processed successfully'], 200);
-            }
-        } else {
-            // Jika pembayaran gagal/expired, kembalikan status ke 'belum'
-            Pembayaran::where('order_id', $orderId)->update([
-                'status' => 'belum',
-                'order_id' => null, // Reset order_id agar bersih
-                'updated_at' => now()
-            ]);
-
-            Log::warning('Duitku Payment Failed', [
-                'order_id' => $orderId,
-                'result_code' => $resultCode,
-                'timestamp' => now()
-            ]);
-
-            return response()->json(['message' => 'Payment failed'], 400);
-        }
     }
 }
