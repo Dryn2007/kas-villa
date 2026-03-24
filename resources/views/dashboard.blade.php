@@ -86,7 +86,12 @@
                                         // Validasi file upload jika diperlukan
                                         const fileInput = document.getElementById('bukti_pembayaran');
                                         if (!fileInput.value) {
-                                            alert('Silakan upload bukti pembayaran terlebih dahulu!');
+                                            Swal.fire({
+                                                icon: 'warning',
+                                                title: 'Oops...',
+                                                text: 'Silakan upload bukti pembayaran terlebih dahulu!',
+                                                confirmButtonColor: '#0d9488'
+                                            });
                                             return;
                                         }
                                         document.getElementById('bulkPaymentForm').submit();
@@ -474,4 +479,5 @@
             });
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </x-app-layout>
