@@ -10,8 +10,9 @@
 
     <!-- Meta Tags (Open Graph) untuk WhatsApp, Facebook, dll -->
     <meta property="og:title" content="Kas Villa - Sistem Pembayaran Kel H Solichin">
-    <meta property="og:description" content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
-    <meta property="og:image" content="{{ asset('images/thumbnail.webp') }}">
+    <meta property="og:description"
+        content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
+    <meta property="og:image" content="{{ asset('images/Thumbnail.jpg') }}">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:type" content="website">
 
