@@ -75,12 +75,43 @@
                                 @php
             $payableTagihans = $tagihanKk->whereNotIn('status', ['lunas', 'proses'])->values();
             $payableIds = $payableTagihans->pluck('id');
+            $payableNominals = $payableTagihans->pluck('nominal', 'id');
                                 @endphp
 
                                 <form id="bulkPaymentForm" action="{{ route('dummy.pay.bulk') }}" method="POST" enctype="multipart/form-data" x-data="{
                                     selected: [],
                                     payableIds: {{ $payableIds->toJson() }},
+                                    payableNominals: {{ collect($payableNominals)->toJson() }},
                                     showUpload: false,
+                                    imagePreview: null,
+
+                                    getTotalNominal() {
+                                        return this.selected.reduce((sum, id) => sum + (this.payableNominals[id] || 0), 0);
+                                    },
+
+                                    formatRupiah(number) {
+                                        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+                                    },
+
+                                    previewImage(event) {
+                                        const file = event.target.files[0];
+                                        if (file) {
+                                            if (file.size > 5 * 1024 * 1024) {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Ukuran Terlalu Besar',
+                                                    text: 'Maksimal ukuran file adalah 5MB!',
+                                                    confirmButtonColor: '#0d9488'
+                                                });
+                                                event.target.value = '';
+                                                this.imagePreview = null;
+                                                return;
+                                            }
+                                            this.imagePreview = URL.createObjectURL(file);
+                                        } else {
+                                            this.imagePreview = null;
+                                        }
+                                    },
 
                                     submitForm() {
                                         // Validasi file upload jika diperlukan
@@ -225,9 +256,30 @@
 
                                             <!-- Form Upload yang muncul setelah tombol ditekan -->
                                             <div x-show="showUpload" x-transition.opacity class="flex flex-col gap-3">
+                                                <div class="bg-teal-50 border border-teal-200 p-3 rounded-xl mt-1">
+                                                    <p class="text-[13px] text-teal-800 font-medium text-center">
+                                                        Membayar <strong x-text="selected.length"></strong> bulan, total:
+                                                    </p>
+                                                    <p class="text-xl font-extrabold text-teal-900 text-center mt-1" x-text="formatRupiah(getTotalNominal())"></p>
+                                                </div>
+
                                                 <div>
-                                                    <label class="block text-xs font-bold text-gray-700 mb-1">Upload Bukti Transfer / Tunai</label>
-                                                    <input type="file" name="bukti_pembayaran" id="bukti_pembayaran" required accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
+                                                    <label class="block text-xs font-bold text-gray-700 mb-1">
+                                                        Upload Bukti Transfer / Tunai 
+                                                        <span class="text-red-500 font-normal ml-1">(Maks 5MB)</span>
+                                                    </label>
+                                                    <input type="file" name="bukti_pembayaran" id="bukti_pembayaran" required accept="image/*" 
+                                                        @change="previewImage($event)"
+                                                        class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
+                                                </div>
+
+                                                <div x-show="imagePreview" style="display: none;" class="w-full flex justify-center border-2 border-dashed border-teal-200 rounded-2xl p-2 bg-gray-50 mt-1">
+                                                    <div class="relative w-[180px] w-max-[100%] aspect-[9/16] bg-black bg-opacity-5 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+                                                        <img :src="imagePreview" class="w-full h-full object-contain" alt="Preview Bukti">
+                                                        <button type="button" @click="imagePreview = null; document.getElementById('bukti_pembayaran').value = ''" class="absolute top-2 right-2 bg-white text-red-500 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center shadow-md font-bold hover:bg-red-50">
+                                                            ✕
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 <button type="button" @click="submitForm()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border border-yellow-300 hover:shadow-lg hover:-translate-y-1">
