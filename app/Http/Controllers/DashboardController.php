@@ -94,13 +94,13 @@ class DashboardController extends Controller
 
         // Upload bukti pembayaran
         $uploadResult = $cloudinaryService->upload($request->file('bukti_pembayaran'), 'kas-villa/bukti-transfer');
-        
+
         if (!$uploadResult['success']) {
             return back()->with('error', 'Gagal mengupload bukti pembayaran: ' . $uploadResult['message']);
         }
-        
+
         $buktiUrl = $uploadResult['url'];
-        
+
         $statusBaru = 'proses';
         $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan beserta bukti pembayaran berhasil dikirim. Menunggu konfirmasi Admin. ⏳';
 
