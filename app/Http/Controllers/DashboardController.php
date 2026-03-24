@@ -96,35 +96,35 @@ class DashboardController extends Controller
 
         // --- Custom Filename Logic ---
         $user = Auth::user();
-        
+
         // Format Nama Keluarga (Sanitasi karakter aneh jadi underscore)
         $namaKeluargaSafe = preg_replace('/[^A-Za-z0-9_-]/', '_', $user->name);
-        
+
         // Format Waktu: Detik-Menit-Jam-tanggal-bulan-Tahun
         $waktu = now()->format('s-i-H-d-m-Y');
-        
+
         // Format Range Bulan
         // Ambil data bulan dari pembayaran yang dipilih
         $paidPayments = Pembayaran::whereIn('id', $submittedIds)->orderBy('bulan_ke')->get();
-        
+
         if ($paidPayments->isEmpty()) {
-             // Fallback jika aneh
-             $rangeBulan = 'Unknown';
+            // Fallback jika aneh
+            $rangeBulan = 'Unknown';
         } else {
-             $firstMonth = $paidPayments->first();
-             $lastMonth = $paidPayments->last();
-             
-             // Base date assumed March 2026 based on View Logic
-             $startMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($firstMonth->bulan_ke)->translatedFormat('F');
-             $endMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($lastMonth->bulan_ke)->translatedFormat('F');
-             
-             if ($paidPayments->count() == 1) {
-                 $rangeBulan = $startMonthName;
-             } else {
-                 $rangeBulan = $startMonthName . '-' . $endMonthName;
-             }
+            $firstMonth = $paidPayments->first();
+            $lastMonth = $paidPayments->last();
+
+            // Base date assumed March 2026 based on View Logic
+            $startMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($firstMonth->bulan_ke)->translatedFormat('F');
+            $endMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($lastMonth->bulan_ke)->translatedFormat('F');
+
+            if ($paidPayments->count() == 1) {
+                $rangeBulan = $startMonthName;
+            } else {
+                $rangeBulan = $startMonthName . '-' . $endMonthName;
+            }
         }
-        
+
         // Gabungkan jadi Nama File Final
         // Contoh: Keluarga_Udin_12-30-10-24-03-2026_Maret-Mei
         $finalFilename = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
@@ -132,8 +132,8 @@ class DashboardController extends Controller
 
         // Upload bukti pembayaran ke Cloudinary dengan Custom Public ID
         $uploadResult = $cloudinaryService->upload(
-            $request->file('bukti_pembayaran'), 
-            'kas-villa/bukti-transfer', 
+            $request->file('bukti_pembayaran'),
+            'kas-villa/bukti-transfer',
             'auto',
             $finalFilename
         );
@@ -143,17 +143,16 @@ class DashboardController extends Controller
         }
 
         $buktiUrl = $uploadResult['url'];
-        
+
         // --- Backup ke Google Drive ---
         try {
             $file = $request->file('bukti_pembayaran');
             // Gunakan nama file yang sama + ekstensi asli
             $extension = $file->getClientOriginalExtension();
             $gdFilename = $finalFilename . '.' . $extension;
-            
+
             // Upload ke Disk 'google'
             Storage::disk('google')->put($gdFilename, file_get_contents($file));
-            
         } catch (\Exception $e) {
             // Log error tapi jangan gagalkan transaksi user, karena ini cuma backup
             Log::error('Gagal backup ke Google Drive: ' . $e->getMessage());

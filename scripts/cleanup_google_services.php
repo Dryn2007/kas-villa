@@ -26,7 +26,8 @@ foreach ($services as $service) {
 
 echo "Cleaned up Google API Services.\n";
 
-function deleteDirectory($dir) {
+function deleteDirectory($dir)
+{
     if (!file_exists($dir)) {
         return true;
     }
