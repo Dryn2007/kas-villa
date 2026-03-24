@@ -91,6 +91,22 @@ class DuitkuController extends Controller
      */
     public function return(Request $request)
     {
+        $merchantOrderId = $request->input('merchantOrderId');
+        
+        // [HACK TESTING] Paksa transaksi jadi lunas saat klik "Kembali Ke Merchant"
+        if ($merchantOrderId) {
+            $pembayarans = Pembayaran::where('order_id', $merchantOrderId)->get();
+            foreach ($pembayarans as $pembayaran) {
+                if ($pembayaran->status !== 'lunas') {
+                    $pembayaran->update([
+                        'status' => 'lunas',
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+            return redirect()->route('dashboard')->with('success', 'HORE! Pembayaran otomatis dianggap Lunas (Mode Otomatis / Bypass Aktif) 🚀');
+        }
+
         $resultCode = $request->input('resultCode');
 
         if ($resultCode == '00') {
