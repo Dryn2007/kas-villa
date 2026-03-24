@@ -126,7 +126,9 @@
                                             return;
                                         }
                                         document.getElementById('bulkPaymentForm').submit();
-                                    },                                    toggle(id) {
+                                    },
+
+                                    toggle(id) {
                                         let idStr = id.toString();
                                         let idx = this.payableIds.indexOf(id);
                                         console.log('Toggle ID:', id, 'Index:', idx);
