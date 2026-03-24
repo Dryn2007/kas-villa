@@ -12,9 +12,9 @@
     <meta property="og:title" content="Kas Villa - Sistem Pembayaran Kel H Solichin">
     <meta property="og:description"
         content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
-    <meta property="og:image" content="{{ asset('images/Thumbnail.jpg') }}">
+    <meta property="og:image" content="{{ asset('images/Thumbnail.png') }}">
     <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="675">
+    <meta property="og:image:height" content="630">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:type" content="website">
 
