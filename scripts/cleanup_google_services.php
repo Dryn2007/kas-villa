@@ -12,6 +12,7 @@ $services = scandir($servicesDir);
 
 foreach ($services as $service) {
     if (in_array($service, ['.', '..', 'Drive', 'Drive.php'])) {
+        echo "Keeping: $service\n";
         continue;
     }
 
@@ -20,7 +21,11 @@ foreach ($services as $service) {
     if (is_dir($path)) {
         deleteDirectory($path);
     } else {
-        unlink($path);
+        try {
+            unlink($path);
+        } catch (Exception $e) {
+            echo "Failed to delete file: $path. Error: " . $e->getMessage() . "\n";
+        }
     }
 }
 
@@ -33,7 +38,12 @@ function deleteDirectory($dir)
     }
 
     if (!is_dir($dir)) {
-        return unlink($dir);
+        try {
+            return unlink($dir);
+        } catch (Exception $e) {
+            echo "Failed to delete file: $dir. Error: " . $e->getMessage() . "\n";
+            return false;
+        }
     }
 
     foreach (scandir($dir) as $item) {
@@ -46,5 +56,10 @@ function deleteDirectory($dir)
         }
     }
 
-    return rmdir($dir);
+    try {
+        return rmdir($dir);
+    } catch (Exception $e) {
+        echo "Failed to remove directory: $dir. Error: " . $e->getMessage() . "\n";
+        return false;
+    }
 }
