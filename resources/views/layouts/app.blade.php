@@ -23,7 +23,10 @@
     <meta name="twitter:title" content="Kas Villa - Sistem Pembayaran Kel H Solichin">
     <meta name="twitter:description"
         content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
-    <meta name="twitter:image" content="{{ asset('images/Thumbnail.jpg') }}">
+    <meta name="twitter:image" content="{{ asset('images/Thumbnail.png') }}">
+
+    <!-- Favicon (logo web) -->
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
