@@ -30,17 +30,26 @@ class CloudinaryService
      * @param UploadedFile $file
      * @param string $folder
      * @param string $resource_type
+     * @param string|null $public_id
      * @return array
      */
-    public function upload(UploadedFile $file, string $folder = 'kas-villa', string $resource_type = 'auto')
+    public function upload(UploadedFile $file, string $folder = 'kas-villa', string $resource_type = 'auto', ?string $public_id = null)
     {
         try {
-            $result = $this->uploadApi->upload($file->getRealPath(), [
+            $options = [
                 'folder' => $folder,
                 'resource_type' => $resource_type,
                 'quality' => 'auto',
                 'fetch_format' => 'auto',
-            ]);
+            ];
+
+            if ($public_id) {
+                $options['public_id'] = $public_id;
+                $options['unique_filename'] = false;
+                $options['overwrite'] = true;
+            }
+
+            $result = $this->uploadApi->upload($file->getRealPath(), $options);
 
             return [
                 'success' => true,
