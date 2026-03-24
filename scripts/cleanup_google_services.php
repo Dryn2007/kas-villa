@@ -41,9 +41,9 @@ if (is_dir($composerDir)) {
     $items = scandir($composerDir);
     foreach ($items as $item) {
         if ($item == '.' || $item == '..') continue;
-        
+
         $path = $composerDir . '/' . $item;
-        
+
         // Safety check: Don't delete metadata files
         if (is_file($path)) continue;
 
@@ -51,7 +51,8 @@ if (is_dir($composerDir)) {
         echo "Deleting junk directory in vendor/composer: $item\n";
         deleteDirectory($path);
     }
-}echo "Cleanup complete.\n";
+}
+echo "Cleanup complete.\n";
 
 function deleteDirectory($dir)
 {
