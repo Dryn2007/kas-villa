@@ -80,6 +80,7 @@
                                 <form id="bulkPaymentForm" action="{{ route('dummy.pay.bulk') }}" method="POST" enctype="multipart/form-data" x-data="{
                                     selected: [],
                                     payableIds: {{ $payableIds->toJson() }},
+                                    showUpload: false,
 
                                     submitForm() {
                                         // Validasi file upload jika diperlukan
@@ -206,19 +207,30 @@
                                          x-transition:leave-end="opacity-0 transform translate-y-12 scale-95"
                                          class="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-5 z-50">
                                         <div class="bg-white p-4 rounded-3xl shadow-2xl border-2 border-teal-200 flex flex-col gap-3 backdrop-blur-md bg-white/95">
-                                            <p class="text-center text-sm font-extrabold text-gray-700">Kirim Pembayaran (<span x-text="selected.length" class="text-teal-600"></span> bln):</p>
+                                            <p class="text-center text-sm font-extrabold text-gray-700">Tagihan (<span x-text="selected.length" class="text-teal-600"></span> bln):</p>
                                             
-                                            <div>
-                                                <label class="block text-xs font-bold text-gray-700 mb-1">Upload Bukti Transfer / Tunai</label>
-                                                <input type="file" name="bukti_pembayaran" id="bukti_pembayaran" required accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
-                                            </div>
-
-                                            <button type="button" @click="submitForm()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border-2 border-teal-500 hover:shadow-lg hover:-translate-y-1">
+                                            <!-- Tombol Awal -->
+                                            <button x-show="!showUpload" type="button" @click="showUpload = true" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border-2 border-teal-500 hover:shadow-lg hover:-translate-y-1">
                                                 <svg class="w-5 h-5 mb-0.5 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                                 </svg>
-                                                <span class="text-[13px] uppercase tracking-wide font-bold">Kirim Bukti Pembayaran</span>
+                                                <span class="text-[13px] uppercase tracking-wide font-bold">Saya Sudah Bayar</span>
                                             </button>
+
+                                            <!-- Form Upload yang muncul setelah tombol ditekan -->
+                                            <div x-show="showUpload" x-transition.opacity class="flex flex-col gap-3">
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-700 mb-1">Upload Bukti Transfer / Tunai</label>
+                                                    <input type="file" name="bukti_pembayaran" id="bukti_pembayaran" required accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
+                                                </div>
+
+                                                <button type="button" @click="submitForm()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border border-yellow-300 hover:shadow-lg hover:-translate-y-1">
+                                                    <svg class="w-5 h-5 mb-0.5 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                    <span class="text-[13px] uppercase tracking-wide font-bold">Kirim Bukti Pembayaran</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                     <!-- Hidden inputs untuk selected IDs -->

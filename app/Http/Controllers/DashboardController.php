@@ -92,31 +92,9 @@ class DashboardController extends Controller
             return back()->with('error', 'Pembayaran harus berurutan! Jangan nge-cheat ya 😉');
         }
 
-        // --- BUAT PENAMAAN FILE KHUSUS ---
-        // Format: Nama keluarga_Detik-Menit-Jam-tanggal-bulan-Tahun_Bayar bulan apa/range bulan
-        
-        $namaKeluarga = $firstTagihan->user->name;
-        // Sanitasi nama keluarga (hapus karakter yang dilarang di storage)
-        $namaKeluargaSafe = preg_replace('/[^A-Za-z0-9\s]/', '', $namaKeluarga);
-        
-        // Detik-Menit-Jam-tanggal-bulan-Tahun (s-i-H-d-m-Y)
-        $waktu = now()->format('s-i-H-d-m-Y');
-        
-        // Range bulan
-        $bulans = Pembayaran::whereIn('id', $submittedIds)->orderBy('bulan_ke', 'asc')->pluck('bulan_ke')->toArray();
-        if (count($bulans) == 1) {
-            $rangeBulan = 'Bulan ' . $bulans[0];
-        } else {
-            $rangeBulan = 'Bulan ' . min($bulans) . '-' . max($bulans);
-        }
+        // Upload bukti pembayaran
+        $uploadResult = $cloudinaryService->upload($request->file('bukti_pembayaran'), 'kas-villa/bukti-transfer');
 
-        $namaFileCustom = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
-        // ---------------------------------
-
-        // Upload bukti pembayaran (Sementara ini disetting namanya dan masuk ke Cloudinary)
-        // Jika Google Drive diaktifkan nanti, nama file ini sangat siap digunakan
-        $uploadResult = $cloudinaryService->upload($request->file('bukti_pembayaran'), 'kas-villa/bukti-transfer', 'auto', $namaFileCustom);
-        
         if (!$uploadResult['success']) {
             return back()->with('error', 'Gagal mengupload bukti pembayaran: ' . $uploadResult['message']);
         }

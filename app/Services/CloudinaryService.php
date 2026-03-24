@@ -32,22 +32,15 @@ class CloudinaryService
      * @param string $resource_type
      * @return array
      */
-    public function upload(UploadedFile $file, string $folder = 'kas-villa', string $resource_type = 'auto', string $public_id = null)
+    public function upload(UploadedFile $file, string $folder = 'kas-villa', string $resource_type = 'auto')
     {
         try {
-            $options = [
+            $result = $this->uploadApi->upload($file->getRealPath(), [
                 'folder' => $folder,
                 'resource_type' => $resource_type,
                 'quality' => 'auto',
                 'fetch_format' => 'auto',
-            ];
-
-            if ($public_id) {
-                // Hapus ekstensi dari public_id jika ada, karena Cloudinary menanganinya otomatis
-                $options['public_id'] = pathinfo($public_id, PATHINFO_FILENAME);
-            }
-
-            $result = $this->uploadApi->upload($file->getRealPath(), $options);
+            ]);
 
             return [
                 'success' => true,

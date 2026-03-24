@@ -16,9 +16,8 @@ class DatabaseSeeder extends Seeder
     {
         // Daftar Kepala Keluarga / Perwakilan
         $daftarKk = [
-            'Adrian Adiputra', // Admin
-            'Heri',
             'Yadi',
+            'Heri',
             'Citra',
             'Ria',
             'Siti',
