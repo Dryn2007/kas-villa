@@ -1,7 +1,11 @@
 <x-guest-layout>
     <div class="max-w-md mx-auto p-4 font-sans">
         <div class="text-center mb-6 mt-4">
-            <div class="text-5xl mb-3">👋</div>
+            <svg class="w-16 h-16 mx-auto mb-3 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1m2-1v2.5M14 4l2-1m-2 1l-2-1m2 1v2.5">
+                </path>
+            </svg>
             <h2 class="text-2xl font-extrabold text-gray-800">Satu Langkah Lagi!</h2>
             <p class="text-sm text-gray-500 mt-2 leading-relaxed">Pilih namamu / keluarga yang kamu wakili. Pilihan yang
                 tergembok berarti sudah login.</p>
@@ -23,7 +27,14 @@
                         <div
                             class="p-4 rounded-2xl border-2 bg-gray-50 border-gray-200 opacity-60 flex justify-between items-center cursor-not-allowed">
                             <span class="font-bold text-gray-500">Keluarga {{ $kk->name }}</span>
-                            <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded">Terisi 🔒</span>
+                            <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                        clip-rule="evenodd"></path>
+                                </svg>
+                                Terisi
+                            </span>
                         </div>
                     @else
                         <button type="submit" name="kk_id" value="{{ $kk->id }}"

@@ -2,9 +2,18 @@
     <div class="max-w-md mx-auto bg-gray-50 min-h-screen pb-12 font-sans">
 
         <div class="bg-teal-600 text-white p-6 rounded-b-3xl shadow-lg relative overflow-hidden">
-            <div class="absolute top-0 right-0 opacity-10 text-9xl -mt-4 -mr-4">🌴</div>
+            <div class="absolute top-0 right-0 opacity-10">
+                <svg class="w-32 h-32 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M5 3a2 2 0 012-2h6a2 2 0 012 2v2h2a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h2V3z"></path>
+                </svg>
+            </div>
             <div class="relative z-10">
-                <p class="text-teal-100 text-sm font-medium">Selamat datang, {{ Auth::user()->name }} 👋</p>
+                <div class="flex items-center gap-2 text-teal-100 text-sm font-medium mb-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1m2-1v2.5M14 4l2-1m-2 1l-2-1m2 1v2.5"></path>
+                    </svg>
+                    Selamat datang, {{ Auth::user()->name }}
+                </div>
                 <h1 class="text-2xl font-bold mb-4">Kas Villa Keluarga</h1>
 
                 <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4 border border-white/30">
@@ -23,12 +32,18 @@
         @if(request()->has('kk_id'))
             <div class="px-5 mt-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-800 flex items-center">
-                        👨‍👩‍👦 Iuran {{ $selectedKk->name }}
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Iuran {{ $selectedKk->name }}
                     </h3>
                     <a href="{{ route('dashboard') }}"
-                        class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full transition-all">
-                        ⬅ Kembali
+                        class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full transition-all flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        Kembali
                     </a>
                 </div>
 
@@ -52,6 +67,8 @@
                     payableIds: {{ $payableIds->toJson() }},
                     
                     submitForm(pilihan) {
+                        console.log('Submit dengan pilihan:', pilihan);
+                        console.log('Selected IDs:', this.selected);
                         // Set metode dengan benar
                         document.querySelector('input[name=metode]').value = pilihan;
                         // Submit form
@@ -61,6 +78,7 @@
                     toggle(id) {
                         let idStr = id.toString();
                         let idx = this.payableIds.indexOf(id);
+                        console.log('Toggle ID:', id, 'Index:', idx);
 
                         if (!this.selected.includes(idStr)) {
                             // Jika dicentang: Centang juga semua yang sebelumnya
@@ -76,6 +94,7 @@
                                 if(pos !== -1) this.selected.splice(pos, 1);
                             }
                         }
+                        console.log('After toggle, selected:', this.selected);
                     },
                     
                     isAllowed(id) {
@@ -91,7 +110,11 @@
                         @if ($tagihan->status === 'lunas')
                             <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex justify-between mb-3 opacity-60">
                                 <div class="flex items-center gap-4">
-                                    <div class="bg-green-100 p-2 rounded-full text-green-600 text-lg">✅</div>
+                                    <div class="bg-green-100 p-2 rounded-full flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
                                     <div>
                                         <p class="font-bold text-gray-800">Bulan {{ $tagihan->bulan_ke }}</p>
                                         <p class="text-xs text-gray-500">Rp {{ number_format($tagihan->nominal, 0, ',', '.') }}</p>
@@ -103,7 +126,11 @@
                         @elseif ($tagihan->status === 'proses')
                             <div class="bg-white rounded-2xl p-4 shadow-sm border border-yellow-200 flex justify-between mb-3 bg-gradient-to-r from-yellow-50 to-white">
                                 <div class="flex items-center gap-4">
-                                    <div class="bg-yellow-100 p-2 rounded-full text-yellow-600 text-lg animate-pulse">⏳</div>
+                                    <div class="bg-yellow-100 p-2 rounded-full flex items-center justify-center animate-pulse">
+                                        <svg class="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                                        </svg>
+                                    </div>
                                     <div>
                                         <p class="font-bold text-gray-800">Bulan {{ $tagihan->bulan_ke }}</p>
                                         <p class="text-xs text-gray-500">Rp {{ number_format($tagihan->nominal, 0, ',', '.') }}</p>
@@ -113,57 +140,92 @@
                             </div>
 
                         @else
-                            <label class="bg-white rounded-2xl p-4 shadow-sm border-l-4 border-l-red-500 flex justify-between items-center mb-3 transition-all cursor-pointer relative"
-                                 :class="!isAllowed({{ $tagihan->id }}) ? 'opacity-60 bg-gray-50' : 'hover:bg-red-50'">
+                            <label class="rounded-2xl p-4 shadow-sm border-l-4 border-l-red-500 flex justify-between items-center mb-3 transition-all cursor-pointer relative"
+                                 :class="{
+                                     'opacity-60 bg-gray-50': !isAllowed({{ $tagihan->id }}),
+                                     'bg-teal-50 border-teal-300': selected.includes('{{ $tagihan->id }}'),
+                                     'bg-white hover:bg-red-50': !selected.includes('{{ $tagihan->id }}') && isAllowed({{ $tagihan->id }})
+                                 }">
                                  
                                 <div x-show="!isAllowed({{ $tagihan->id }})" class="absolute inset-0 z-10 cursor-not-allowed"></div>
 
                                 <div class="flex items-center gap-4">
+                                    <!-- Checkbox hanya muncul jika ada 2+ bulan yang bisa dibayar -->
+                                    <div x-show="payableIds.length >= 2" class="w-6 h-6 rounded border-2 transition-all flex items-center justify-center flex-shrink-0"
+                                        :class="{
+                                            'bg-teal-600 border-teal-600': selected.includes('{{ $tagihan->id }}'),
+                                            'border-gray-300 bg-white': !selected.includes('{{ $tagihan->id }}')
+                                        }">
+                                        <svg x-show="selected.includes('{{ $tagihan->id }}')" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    
+                                    <!-- Hidden checkbox untuk form submission -->
                                     <input type="checkbox" name="tagihan_ids[]" value="{{ $tagihan->id }}" 
                                         :checked="selected.includes('{{ $tagihan->id }}')"
                                         @click.prevent="toggle({{ $tagihan->id }})"
                                         :disabled="!isAllowed({{ $tagihan->id }})"
-                                        class="w-6 h-6 text-teal-600 border-gray-300 rounded focus:ring-teal-500 disabled:bg-gray-200 transition-colors cursor-pointer relative z-20">
+                                        class="hidden">
+                                        
                                     <div>
                                         <p class="font-bold text-gray-800 text-lg">Bulan {{ $tagihan->bulan_ke }}</p>
                                         <p class="text-sm text-gray-500">Rp {{ number_format($tagihan->nominal, 0, ',', '.') }}</p>
                                     </div>
                                 </div>
                                 
-                                <div x-show="!isAllowed({{ $tagihan->id }})" class="text-[10px] text-gray-500 font-bold bg-gray-200 px-2 py-1 rounded">
-                                    🔒 Kunci
+                                <div x-show="!isAllowed({{ $tagihan->id }})" class="text-[10px] text-gray-500 font-bold bg-gray-200 px-2 py-1 rounded flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Kunci
                                 </div>
                             </label>
                         @endif
                     @endforeach
 
-                    <div x-show="selected.length > 0" x-transition.duration.300ms class="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-5 z-50">
-                        <div class="bg-white p-3 rounded-3xl shadow-2xl border-2 border-teal-100 flex flex-col gap-3 backdrop-blur-md bg-white/90">
-                            <p class="text-center text-sm font-extrabold text-gray-700">Pilih Metode Pembayaran (<span x-text="selected.length"></span> bln):</p>
+                    <div x-show="selected.length > 0" 
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 transform translate-y-12 scale-95"
+                         x-transition:enter-end="opacity-100 transform translate-y-0 scale-100"
+                         x-transition:leave="transition ease-in duration-200"
+                         x-transition:leave-start="opacity-100 transform translate-y-0 scale-100"
+                         x-transition:leave-end="opacity-0 transform translate-y-12 scale-95"
+                         class="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-5 z-50">
+                        <div class="bg-white p-4 rounded-3xl shadow-2xl border-2 border-teal-200 flex flex-col gap-4 backdrop-blur-md bg-white/95">
+                            <p class="text-center text-sm font-extrabold text-gray-700">Pilih Metode Pembayaran (<span x-text="selected.length" class="text-teal-600"></span> bln):</p>
                             
-                            <div class="flex gap-2">
-                                <button type="button" @click="submitForm('tunai')" class="w-1/2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-2 rounded-2xl shadow-sm flex flex-col justify-center items-center transition-all active:scale-95">
-                                    <span class="text-xl mb-1">💵</span>
-                                    <span class="text-[11px] uppercase tracking-wide">Titip Admin</span>
+                            <div class="flex gap-3">
+                                <button type="button" @click="submitForm('tunai')" class="w-1/2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-2 rounded-2xl shadow-md flex flex-col justify-center items-center transition-all duration-200 active:scale-95 hover:shadow-lg hover:-translate-y-1">
+                                    <svg class="w-5 h-5 mb-1 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span class="text-[11px] uppercase tracking-wide font-bold">Titip Admin</span>
                                 </button>
                                 
-                                <button type="button" @click="submitForm('online')" class="w-1/2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-2 rounded-2xl shadow-sm flex flex-col justify-center items-center transition-all active:scale-95 border border-teal-500">
-                                    <span class="text-xl mb-1">💳</span>
-                                    <span class="text-[11px] uppercase tracking-wide">Online (Duitku)</span>
+                                <button type="button" @click="submitForm('online')" class="w-1/2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-2 rounded-2xl shadow-md flex flex-col justify-center items-center transition-all duration-200 active:scale-95 border-2 border-teal-500 hover:shadow-lg hover:-translate-y-1">
+                                    <svg class="w-5 h-5 mb-1 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="text-[11px] uppercase tracking-wide font-bold">Online (Duitku)</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                     <!-- Hidden inputs untuk selected IDs -->
                     <template x-for="id in selected" :key="id">
-                        <input type="hidden" name="selected[]" :value="id">
+                        <input type="hidden" name="tagihan_ids[]" :value="id">
                     </template>
                 </form>
             </div>
 
         @else
             <div x-data="{ openModal: false }" class="px-5 mt-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-3">Pilih Tagihan 💸</h3>
+                <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Pilih Tagihan</h3>
 
                 <div class="grid grid-cols-1 gap-4">
                     <a href="{{ route('dashboard', ['kk_id' => Auth::user()->id]) }}"

@@ -4,18 +4,10 @@
 
         <!-- Logo & Heading -->
         <div class="text-center mb-8">
-            <div
-                class="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg transform hover:scale-105 transition-transform">
-                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z">
-                    </path>
-                    <path
-                        d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z">
-                    </path>
-                </svg>
-            </div>
-            <h1 class="text-3xl font-extrabold text-gray-800">Kas Villa 🏘️</h1>
-            <p class="text-sm text-gray-500 mt-2 font-medium">Sistem Pengelolaan Kas Keluarga Besar</p>
+            <img src="{{ asset('images/logo.webp') }}" alt="Keluarga H Solichin"
+                class="w-24 h-24 mx-auto mb-4 rounded-full shadow-lg transform hover:scale-105 transition-transform">
+            <h1 class="text-3xl font-extrabold text-gray-800">Kas Villa</h1>
+            <p class="text-sm text-gray-500 mt-2 font-medium">Keluarga H Solichin - Sistem Pengelolaan Kas</p>
         </div>
 
         <!-- Session Status -->
@@ -50,7 +42,13 @@
 
         <!-- Footer -->
         <div class="mt-8 text-center text-xs text-gray-500 font-medium">
-            <p>✨ Masuk dengan akun Google Anda untuk melanjutkan</p>
+            <p class="flex items-center justify-center gap-2">
+                <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Masuk dengan akun Google Anda untuk melanjutkan
+            </p>
         </div>
     </div>
 </x-guest-layout>

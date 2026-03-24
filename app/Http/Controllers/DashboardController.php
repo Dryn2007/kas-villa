@@ -81,8 +81,14 @@ class DashboardController extends Controller
         sort($idYangSah);
 
         // Validasi: Apakah ID yang dikirim sesuai dengan urutan dari bulan paling awal?
-        if ($submittedIds !== $idYangSah) {
-            return back()->with('error', 'Pembayaran harus berurutan dari bulan tertua! Jangan nge-cheat ya 😉');
+        // Relax validasi untuk pembayaran online (boleh 1 bulan), tapi tetap enforce sequential untuk tunai
+        if ($metode === 'tunai' && $submittedIds !== $idYangSah) {
+            return back()->with('error', 'Pembayaran tunai harus berurutan dari bulan tertua! Jangan nge-cheat ya 😉');
+        }
+
+        // Untuk online, validasi hanya untuk 2+ bulan
+        if ($metode === 'online' && count($submittedIds) >= 2 && $submittedIds !== $idYangSah) {
+            return back()->with('error', 'Pembayaran online untuk 2+ bulan harus berurutan dari bulan tertua!');
         }
 
         // Tentukan status dan pesan berdasarkan tombol yang diklik
