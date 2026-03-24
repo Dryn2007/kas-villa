@@ -108,20 +108,20 @@ class DashboardController extends Controller
         }
 
         // JIKA ONLINE: Buat Invoice Duitku
-        // JIKA ONLINE: Buat Invoice Duitku
         if ($metode === 'online') {
             $merchantCode = env('DUITKU_MERCHANT_CODE');
             $merchantKey = env('DUITKU_MERCHANT_KEY');
 
+            // 🚨 DETEKSI ERROR: Cek apakah kunci rahasia terbaca!
+            if (empty($merchantCode) || empty($merchantKey)) {
+                return back()->with('error', 'Gagal: Kunci Duitku tidak terbaca! Pastikan sudah di-set di .env atau Vercel Environment.');
+            }
+
             // Bikin Order ID unik (Misal: KAS-17091234-User1)
             $orderId = 'KAS-' . time() . '-' . Auth::id();
-            $amount = $totalNominal ?? 0;
 
-            // Hitung total nominal dari tagihan yang dipilih
-            if (!isset($totalNominal)) {
-                $totalNominal = Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
-                $amount = $totalNominal;
-            }
+            // 🚨 PERBAIKAN: Paksa nominal menjadi angka murni (Integer)
+            $amount = (int) Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
 
             // Rumus rahasia Duitku (MD5)
             $signature = md5($merchantCode . $orderId . $amount . $merchantKey);
@@ -136,7 +136,6 @@ class DashboardController extends Controller
                 $bulanTeks = $this->getBulanTeks($tagihanAwal->bulan_ke) . ' s/d ' . $this->getBulanTeks($tagihanAkhir->bulan_ke);
             }
 
-            // PERBAIKAN: Format data yang lebih disukai Duitku
             $params = [
                 'merchantCode' => $merchantCode,
                 'paymentAmount' => $amount,
@@ -144,10 +143,9 @@ class DashboardController extends Controller
                 'productDetails' => 'Pembayaran Kas ' . $bulanTeks,
                 'email' => Auth::user()->email,
                 'customerVaName' => Auth::user()->name,
-                // Cek nomor HP ketat: Kalau kosong/null, paksa pakai nomor dummy
                 'phoneNumber' => empty(Auth::user()->no_wa) ? '081234567890' : Auth::user()->no_wa,
 
-                // Duitku sering mewajibkan rincian item (itemDetails)
+                // Rincian item
                 'itemDetails' => [
                     [
                         'name' => 'Kas ' . $bulanTeks,
@@ -162,13 +160,12 @@ class DashboardController extends Controller
                 'expiryPeriod' => 60
             ];
 
-            // PERBAIKAN: Gunakan endpoint createInvoice yang lebih stabil
-            $response = Http::post('https://api-sandbox.duitku.com/api/merchant/createInvoice', $params);
-
-            // Tangkap JSON aslinya
+            // 🚨 PERBAIKAN URL: Pastikan huruf kecil semua di tulisan 'createinvoice'
+            $response = Http::post('https://api-sandbox.duitku.com/api/merchant/createinvoice', $params);
             $result = $response->json();
 
-            if (isset($result['paymentUrl'])) {
+            // Pengecekan status dari Duitku
+            if ($response->successful() && isset($result['paymentUrl'])) {
                 // Simpan Order ID ke tagihan
                 Pembayaran::whereIn('id', $submittedIds)->update([
                     'status' => 'proses_online',
@@ -179,9 +176,9 @@ class DashboardController extends Controller
                 // Lempar ke Kasir Duitku!
                 return redirect($result['paymentUrl']);
             } else {
-                // TAMPILKAN ERROR ASLI DARI DUITKU AGAR KITA TAHU PENYEBABNYA
-                $errorAsli = $response->body();
-                return back()->with('error', 'Duitku Error: ' . $errorAsli);
+                // Jika masih error, tampilkan kode error aslinya agar kita tahu
+                $pesanError = $result['Message'] ?? $result['statusMessage'] ?? $response->body();
+                return back()->with('error', 'Duitku Error: ' . $pesanError);
             }
         }
     }
