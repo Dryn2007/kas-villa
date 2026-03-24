@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\DuitkuController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -47,6 +48,10 @@ Route::post('/admin-panel/reject/{id}', [AdminController::class, 'reject'])->nam
 Route::post('/admin-panel/add-kk', [AdminController::class, 'addKk'])->name('admin.addKk');
 Route::delete('/admin-panel/delete-kk/{id}', [AdminController::class, 'deleteKk'])->name('admin.deleteKk');
 Route::post('/admin-panel/manual-pay/{id}', [AdminController::class, 'manualPay'])->name('admin.manualPay');
+
+// Duitku Payment Routes
+Route::post('/api/duitku/callback', [DuitkuController::class, 'callback'])->name('duitku.callback');
+Route::get('/duitku/return', [DuitkuController::class, 'return'])->name('duitku.return');
 
 Route::get('/export/pdf', [ExportController::class, 'exportPdf'])->name('export.pdf')->middleware('auth');
 Route::get('/export/excel', [ExportController::class, 'exportExcel'])->name('export.excel')->middleware('auth');

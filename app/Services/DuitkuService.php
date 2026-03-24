@@ -25,7 +25,7 @@ class DuitkuService
         // Gunakan sandbox atau production sesuai env
         $env = env('DUITKU_ENV', 'sandbox');
         $this->apiUrl = $env === 'production'
-            ? 'https://api.duitku.com/webapi/api/merchant/v2/inquiry'
+            ? 'https://passport.duitku.com/webapi/api/merchant/v2/inquiry'
             : 'https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry';
     }
 
@@ -176,5 +176,58 @@ class DuitkuService
         ];
 
         return $statuses[$statusCode] ?? 'Status Tidak Diketahui';
+    }
+
+    /**
+     * Buat payment invoice di Duitku Pop
+     * 
+     * @param array $payload - Data pembayaran
+     * @return array - Response dari Duitku API Pop
+     */
+    public function createInvoicePop(array $payload): array
+    {
+        try {
+            $timestamp = round(microtime(true) * 1000); // Milisecond
+            $signature = hash('sha256', $this->merchantCode . $timestamp . $this->merchantKey);
+
+            $env = env('DUITKU_ENV', 'sandbox');
+            $apiUrl = $env === 'production'
+                ? 'https://api-prod.duitku.com/api/merchant/createInvoice'
+                : 'https://api-sandbox.duitku.com/api/merchant/createInvoice';
+
+            $headers = [
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+                'Content-Length' => strlen(json_encode($payload)),
+                'x-duitku-signature' => $signature,
+                'x-duitku-timestamp' => $timestamp,
+                'x-duitku-merchantcode' => $this->merchantCode
+            ];
+
+            // Tembak API Duitku Pop
+            $response = Http::withHeaders($headers)->timeout(30)->post($apiUrl, $payload);
+
+            $result = $response->json();
+
+            // Log request
+            Log::info('Duitku Create Invoice Pop Request', [
+                'order_id' => $payload['merchantOrderId'] ?? null,
+                'amount' => $payload['paymentAmount'] ?? null,
+                'status_code' => $response->status(),
+                'response' => $result
+            ]);
+
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Duitku API Pop Error', [
+                'message' => $e->getMessage(),
+                'order_id' => $payload['merchantOrderId'] ?? 'unknown'
+            ]);
+
+            return [
+                'statusCode' => '01',
+                'statusMessage' => 'API Error: ' . $e->getMessage()
+            ];
+        }
     }
 }

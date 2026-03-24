@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Pembayaran;
 use App\Models\User;
+use App\Services\DuitkuService;
 
 class DashboardController extends Controller
 {
@@ -54,7 +55,7 @@ class DashboardController extends Controller
     }
 
     // Fungsi untuk Bayar Sekaligus (Duitku & Titip Admin)
-    public function dummyPayBulk(Request $request)
+    public function dummyPayBulk(Request $request, DuitkuService $duitku)
     {
         $ids = $request->input('tagihan_ids', []);
         $metode = $request->input('metode', 'online'); // Menangkap metode dari tombol
@@ -83,19 +84,69 @@ class DashboardController extends Controller
             return back()->with('error', 'Pembayaran harus berurutan! Jangan nge-cheat ya 😉');
         }
 
-        // Tentukan status dan pesan berdasarkan tombol yang diklik
-        $statusBaru = $metode === 'tunai' ? 'proses' : 'lunas';
-        $pesan = $metode === 'tunai'
-            ? 'Sip! ' . count($submittedIds) . ' bulan tagihan sedang menunggu konfirmasi Admin. ⏳'
-            : 'Hore! ' . count($submittedIds) . ' bulan tagihan berhasil dilunasi via Online! 🎉';
+        if ($metode === 'online') {
+            $totalAmount = Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
+            $orderId = DuitkuService::generateOrderId($userId);
 
-        // Update ke database
-        Pembayaran::whereIn('id', $submittedIds)->update([
-            'status' => $statusBaru,
-            'updated_at' => now()
-        ]);
+            $items = Pembayaran::whereIn('id', $submittedIds)->get()->map(function ($p) {
+                return [
+                    'name' => 'Iuran Bulan ke-' . $p->bulan_ke,
+                    'price' => $p->nominal,
+                    'quantity' => 1
+                ];
+            })->toArray();
 
-        return back()->with('success', $pesan);
+            $user = User::findOrFail($userId);
+
+            $payload = [
+                'paymentAmount' => (int) $totalAmount,
+                'merchantOrderId' => $orderId,
+                'productDetails' => 'Pembayaran Iuran Kas',
+                'email' => $user->email,
+                'phoneNumber' => '081234567890', // Bisa disesuaikan dengan no hp user jika ada 
+                'customerVaName' => substr($user->name, 0, 20),
+                'itemDetails' => $items,
+                'customerDetail' => [
+                    'firstName' => $user->name,
+                    'lastName' => '',
+                    'email' => $user->email,
+                    'phoneNumber' => '081234567890',
+                ],
+                'callbackUrl' => url('/api/duitku/callback'),
+                'returnUrl' => url('/duitku/return'),
+                'expiryPeriod' => 60 // 1 jam
+            ];
+
+            // Panggil API Duitku (Pop API lebih gampang untuk generic checkout)
+            $duitkuService = new DuitkuService();
+            $response = $duitkuService->createInvoicePop($payload);
+
+            if (isset($response['statusCode']) && $response['statusCode'] === '00' && isset($response['paymentUrl'])) {
+                // Update ke database
+                Pembayaran::whereIn('id', $submittedIds)->update([
+                    'status' => 'proses_online',
+                    'order_id' => $orderId,
+                    'payment_url' => $response['paymentUrl'],
+                    'updated_at' => now()
+                ]);
+
+                return redirect()->away($response['paymentUrl']);
+            } else {
+                return back()->with('error', 'Gagal membuat invoice pembayaran: ' . ($response['statusMessage'] ?? 'Unknown Error'));
+            }
+        } else {
+            // Tunai
+            $statusBaru = 'proses';
+            $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan sedang menunggu konfirmasi Admin. ⏳';
+
+            // Update ke database
+            Pembayaran::whereIn('id', $submittedIds)->update([
+                'status' => $statusBaru,
+                'updated_at' => now()
+            ]);
+
+            return back()->with('success', $pesan);
+        }
     }
 
     // Fungsi untuk Halaman Riwayat Semua Pembayaran
