@@ -80,6 +80,15 @@
                             {{ number_format($pending->nominal, 0, ',', '.') }}</span>
                     </div>
 
+                    @if($pending->bukti_pembayaran)
+                    <div class="mb-4 ml-2">
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bukti Pembayaran</p>
+                        <a href="{{ $pending->bukti_pembayaran }}" target="_blank">
+                            <img src="{{ $pending->bukti_pembayaran }}" alt="Bukti Transfer" class="w-full h-32 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition">
+                        </a>
+                    </div>
+                    @endif
+
                     <div class="flex gap-2 ml-2">
                         <form action="{{ route('admin.reject', $pending->id) }}" method="POST" class="w-1/3">
                             @csrf

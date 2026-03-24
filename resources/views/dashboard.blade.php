@@ -77,20 +77,19 @@
             $payableIds = $payableTagihans->pluck('id');
                                 @endphp
 
-                                <form id="bulkPaymentForm" action="{{ route('dummy.pay.bulk') }}" method="POST" x-data="{ 
+                                <form id="bulkPaymentForm" action="{{ route('dummy.pay.bulk') }}" method="POST" enctype="multipart/form-data" x-data="{
                                     selected: [],
                                     payableIds: {{ $payableIds->toJson() }},
 
-                                    submitForm(pilihan) {
-                                        console.log('Submit dengan pilihan:', pilihan);
-                                        console.log('Selected IDs:', this.selected);
-                                        // Set metode dengan benar
-                                        document.querySelector('input[name=metode]').value = pilihan;
-                                        // Submit form
+                                    submitForm() {
+                                        // Validasi file upload jika diperlukan
+                                        const fileInput = document.getElementById('bukti_pembayaran');
+                                        if (!fileInput.value) {
+                                            alert('Silakan upload bukti pembayaran terlebih dahulu!');
+                                            return;
+                                        }
                                         document.getElementById('bulkPaymentForm').submit();
-                                    },
-
-                                    toggle(id) {
+                                    },                                    toggle(id) {
                                         let idStr = id.toString();
                                         let idx = this.payableIds.indexOf(id);
                                         console.log('Toggle ID:', id, 'Index:', idx);
@@ -108,18 +107,17 @@
                                                 let pos = this.selected.indexOf(curr);
                                                 if(pos !== -1) this.selected.splice(pos, 1);
                                             }
-                                        }
+                                        </div>
                                         console.log('After toggle, selected:', this.selected);
                                     },
 
                                     isAllowed(id) {
                                         let idx = this.payableIds.indexOf(id);
-                                        if (idx === 0) return true; 
+                                        if (idx === 0) return true;
                                         let prevId = this.payableIds[idx - 1].toString();
                                         return this.selected.includes(prevId);
                                     }
-                                }" class="pb-28"> @csrf
-                                    <input type="hidden" name="metode" value="online">
+                                }" class="pb-36"> @csrf
 
                                     @foreach ($tagihanKk as $tagihan)
                                         @if ($tagihan->status === 'lunas')
@@ -199,7 +197,7 @@
                                         @endif
                                     @endforeach
 
-                                    <div x-show="selected.length > 0" 
+                                    <div x-show="selected.length > 0"
                                          x-transition:enter="transition ease-out duration-300"
                                          x-transition:enter-start="opacity-0 transform translate-y-12 scale-95"
                                          x-transition:enter-end="opacity-100 transform translate-y-0 scale-100"
@@ -207,24 +205,20 @@
                                          x-transition:leave-start="opacity-100 transform translate-y-0 scale-100"
                                          x-transition:leave-end="opacity-0 transform translate-y-12 scale-95"
                                          class="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-5 z-50">
-                                        <div class="bg-white p-4 rounded-3xl shadow-2xl border-2 border-teal-200 flex flex-col gap-4 backdrop-blur-md bg-white/95">
-                                            <p class="text-center text-sm font-extrabold text-gray-700">Pilih Metode Pembayaran (<span x-text="selected.length" class="text-teal-600"></span> bln):</p>
-
-                                            <div class="flex gap-3">
-                                                <button type="button" @click="submitForm('tunai')" class="w-1/2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-2 rounded-2xl shadow-md flex flex-col justify-center items-center transition-all duration-200 active:scale-95 hover:shadow-lg hover:-translate-y-1">
-                                                    <svg class="w-5 h-5 mb-1 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                    </svg>
-                                                    <span class="text-[11px] uppercase tracking-wide font-bold">Titip Admin</span>
-                                                </button>
-
-                                                <button type="button" @click="submitForm('online')" class="w-1/2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-2 rounded-2xl shadow-md flex flex-col justify-center items-center transition-all duration-200 active:scale-95 border-2 border-teal-500 hover:shadow-lg hover:-translate-y-1">
-                                                    <svg class="w-5 h-5 mb-1 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                                    </svg>
-                                                    <span class="text-[11px] uppercase tracking-wide font-bold">Online (Duitku)</span>
-                                                </button>
+                                        <div class="bg-white p-4 rounded-3xl shadow-2xl border-2 border-teal-200 flex flex-col gap-3 backdrop-blur-md bg-white/95">
+                                            <p class="text-center text-sm font-extrabold text-gray-700">Kirim Pembayaran (<span x-text="selected.length" class="text-teal-600"></span> bln):</p>
+                                            
+                                            <div>
+                                                <label class="block text-xs font-bold text-gray-700 mb-1">Upload Bukti Transfer / Tunai</label>
+                                                <input type="file" name="bukti_pembayaran" id="bukti_pembayaran" required accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
                                             </div>
+
+                                            <button type="button" @click="submitForm()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border-2 border-teal-500 hover:shadow-lg hover:-translate-y-1">
+                                                <svg class="w-5 h-5 mb-0.5 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span class="text-[13px] uppercase tracking-wide font-bold">Kirim Bukti Pembayaran</span>
+                                            </button>
                                         </div>
                                     </div>
                                     <!-- Hidden inputs untuk selected IDs -->

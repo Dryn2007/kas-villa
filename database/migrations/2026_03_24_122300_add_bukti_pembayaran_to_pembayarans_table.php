@@ -11,7 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Already executed
+        Schema::table('pembayarans', function (Blueprint $table) {
+            $table->string('bukti_pembayaran')->nullable()->after('status');
+        });
     }
 
     /**
@@ -19,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // 
+        Schema::table('pembayarans', function (Blueprint $table) {
+            $table->dropColumn('bukti_pembayaran');
+        });
     }
 };

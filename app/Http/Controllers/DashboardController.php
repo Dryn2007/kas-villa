@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Pembayaran;
 use App\Models\User;
-use App\Services\DuitkuService;
+use App\Services\CloudinaryService;
 
 class DashboardController extends Controller
 {
@@ -54,15 +54,18 @@ class DashboardController extends Controller
         return view('dashboard', compact('semuaKk', 'leaderboard', 'historyTerbaru', 'totalTerkumpul', 'targetDana', 'persentase'));
     }
 
-    // Fungsi untuk Bayar Sekaligus (Duitku & Titip Admin)
-    public function dummyPayBulk(Request $request, DuitkuService $duitku)
+    // Fungsi untuk Bayar Sekaligus
+    public function dummyPayBulk(Request $request, CloudinaryService $cloudinaryService)
     {
         $ids = $request->input('tagihan_ids', []);
-        $metode = $request->input('metode', 'online'); // Menangkap metode dari tombol
 
         if (empty($ids)) {
             return back()->with('error', 'Pilih minimal satu bulan untuk dibayar.');
         }
+
+        $request->validate([
+            'bukti_pembayaran' => 'required|image|max:5120'
+        ]);
 
         try {
             $firstTagihan = Pembayaran::findOrFail($ids[0]);
@@ -74,7 +77,7 @@ class DashboardController extends Controller
 
         // Ambil SEMUA tagihan yang murni belum dibayar (abaikan yang lunas & yang sedang proses)
         $allUnpaid = Pembayaran::where('user_id', $userId)
-            ->whereNotIn('status', ['lunas', 'proses'])
+            ->whereNotIn('status', ['lunas', 'proses', 'proses_online'])
             ->orderBy('bulan_ke', 'asc')
             ->get();
 
@@ -89,85 +92,30 @@ class DashboardController extends Controller
             return back()->with('error', 'Pembayaran harus berurutan! Jangan nge-cheat ya 😉');
         }
 
-        if ($metode === 'online') {
-            $totalAmount = Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
-            $orderId = DuitkuService::generateOrderId($userId);
-
-            $items = Pembayaran::whereIn('id', $submittedIds)->get()->map(function ($p) {
-                return [
-                    'name' => 'Iuran Bulan ke-' . $p->bulan_ke,
-                    'price' => $p->nominal,
-                    'quantity' => 1
-                ];
-            })->toArray();
-
-            try {
-                $user = User::findOrFail($userId);
-            } catch (\Throwable $e) {
-                return back()->with('error', 'Data User tidak ditemukan.');
-            }
-
-            $payload = [
-                'paymentAmount' => (int) $totalAmount,
-                'merchantOrderId' => $orderId,
-                'productDetails' => 'Pembayaran Iuran Kas',
-                'email' => $user->email,
-                'phoneNumber' => '081234567890', // Bisa disesuaikan dengan no hp user jika ada 
-                'customerVaName' => function_exists('mb_substr') ? mb_substr($user->name, 0, 20) : substr($user->name, 0, 20),
-                'itemDetails' => $items,
-                'customerDetail' => [
-                    'firstName' => $user->name,
-                    'lastName' => '',
-                    'email' => $user->email,
-                    'phoneNumber' => '081234567890',
-                ],
-                'callbackUrl' => url('/api/duitku/callback'),
-                'returnUrl' => url('/duitku/return'),
-                'expiryPeriod' => 60 // 1 jam
-            ];
-
-            // Panggil API Duitku (Pop API lebih gampang untuk generic checkout)
-            $duitkuService = new DuitkuService();
-            $response = $duitkuService->createInvoicePop($payload);
-
-            if (isset($response['statusCode']) && $response['statusCode'] === '00' && isset($response['paymentUrl'])) {
-                try {
-                    // Update ke database
-                    Pembayaran::whereIn('id', $submittedIds)->update([
-                        'status' => 'proses_online',
-                        'order_id' => $orderId,
-                        'payment_url' => $response['paymentUrl'],
-                        'updated_at' => now()
-                    ]);
-
-                    return redirect()->away($response['paymentUrl']);
-                } catch (\Throwable $e) {
-                    try {
-                        \Illuminate\Support\Facades\Log::error('DB Update Error: ' . $e->getMessage());
-                    } catch (\Throwable $logErr) {
-                    }
-                    return back()->with('error', 'Terjadi kesalahan sistem saat menyimpan data transaksi. Silahkan hubungi admin. Error: ' . $e->getMessage());
-                }
-            } else {
-                return back()->with('error', 'Gagal membuat invoice pembayaran: ' . ($response['statusMessage'] ?? 'Unknown Error'));
-            }
-        } else {
-            // Tunai
-            $statusBaru = 'proses';
-            $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan sedang menunggu konfirmasi Admin. ⏳';
-
-            try {
-                // Update ke database
-                Pembayaran::whereIn('id', $submittedIds)->update([
-                    'status' => $statusBaru,
-                    'updated_at' => now()
-                ]);
-            } catch (\Throwable $e) {
-                return back()->with('error', 'Terjadi kesalahan sistem saat proses Tunai: ' . $e->getMessage());
-            }
-
-            return back()->with('success', $pesan);
+        // Upload bukti pembayaran
+        $uploadResult = $cloudinaryService->upload($request->file('bukti_pembayaran'), 'kas-villa/bukti-transfer');
+        
+        if (!$uploadResult['success']) {
+            return back()->with('error', 'Gagal mengupload bukti pembayaran: ' . $uploadResult['message']);
         }
+        
+        $buktiUrl = $uploadResult['url'];
+        
+        $statusBaru = 'proses';
+        $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan beserta bukti pembayaran berhasil dikirim. Menunggu konfirmasi Admin. ⏳';
+
+        try {
+            // Update ke database
+            Pembayaran::whereIn('id', $submittedIds)->update([
+                'status' => $statusBaru,
+                'bukti_pembayaran' => $buktiUrl,
+                'updated_at' => now()
+            ]);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Terjadi kesalahan sistem saat proses: ' . $e->getMessage());
+        }
+
+        return back()->with('success', $pesan);
     }
 
     // Fungsi untuk Halaman Riwayat Semua Pembayaran

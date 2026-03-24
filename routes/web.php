@@ -52,10 +52,6 @@ Route::post('/admin-panel/add-kk', [AdminController::class, 'addKk'])->name('adm
 Route::delete('/admin-panel/delete-kk/{id}', [AdminController::class, 'deleteKk'])->name('admin.deleteKk');
 Route::post('/admin-panel/manual-pay/{id}', [AdminController::class, 'manualPay'])->name('admin.manualPay');
 
-// Duitku Payment Routes
-Route::post('/api/duitku/callback', [DuitkuController::class, 'callback'])->name('duitku.callback');
-Route::get('/duitku/return', [DuitkuController::class, 'return'])->name('duitku.return');
-
 Route::get('/export/pdf', [ExportController::class, 'exportPdf'])->name('export.pdf')->middleware('auth');
 Route::get('/export/excel', [ExportController::class, 'exportExcel'])->name('export.excel')->middleware('auth');
 
