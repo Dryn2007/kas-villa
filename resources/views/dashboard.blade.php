@@ -108,8 +108,9 @@
                                                 let pos = this.selected.indexOf(curr);
                                                 if(pos !== -1) this.selected.splice(pos, 1);
                                             }
-                                        </div>
+                                        }
                                         console.log('After toggle, selected:', this.selected);
+                                        this.showUpload = false;
                                     },
 
                                     isAllowed(id) {
