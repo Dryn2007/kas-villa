@@ -165,9 +165,29 @@ class DashboardController extends Controller
                     'expiryPeriod' => 60
                 ];
 
+                // DEBUG: Log request sebelum dikirim
+                Log::info('Duitku CreateInvoice Request', [
+                    'endpoint' => 'https://api-sandbox.duitku.com/api/merchant/createInvoice',
+                    'merchantCode' => $merchantCode,
+                    'orderId' => $orderId,
+                    'amount' => $amount,
+                    'amountType' => gettype($amount),
+                    'signature' => $signature,
+                    'email' => Auth::user()->email,
+                    'phoneNumber' => $userPhone
+                ]);
+
                 // KITA PINDAH JALUR KE SINI: createInvoice
                 $response = Http::timeout(10)->post('https://api-sandbox.duitku.com/api/merchant/createInvoice', $params);
                 $result = $response->json();
+
+                // DEBUG: Log response dari Duitku
+                Log::info('Duitku CreateInvoice Response', [
+                    'statusCode' => $response->status(),
+                    'successful' => $response->successful(),
+                    'response' => $result,
+                    'body' => $response->body()
+                ]);
 
                 if ($response->successful() && isset($result['paymentUrl'])) {
                     // Berhasil! Simpan dan alihkan ke Kasir
@@ -177,11 +197,26 @@ class DashboardController extends Controller
                         'updated_at' => now()
                     ]);
 
+                    Log::info('Duitku Payment Success', [
+                        'orderId' => $orderId,
+                        'amount' => $amount,
+                        'paymentUrl' => $result['paymentUrl']
+                    ]);
+
                     // TERBANG KE HALAMAN DUITKU 🚀
                     return redirect($result['paymentUrl']);
                 } else {
                     // Tangkap alasan kalau masih ditolak
                     $pesanError = $result['statusMessage'] ?? $result['Message'] ?? $response->body();
+
+                    Log::error('Duitku Payment Failed', [
+                        'orderId' => $orderId,
+                        'amount' => $amount,
+                        'statusCode' => $response->status(),
+                        'error' => $pesanError,
+                        'fullResponse' => $result
+                    ]);
+
                     return back()->with('error', 'Duitku Menolak: ' . $pesanError);
                 }
             } catch (\Exception $e) {
@@ -269,6 +304,4 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Payment failed'], 400);
         }
     }
-
-    
 }
