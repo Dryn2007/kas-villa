@@ -64,7 +64,12 @@ class DashboardController extends Controller
             return back()->with('error', 'Pilih minimal satu bulan untuk dibayar.');
         }
 
-        $firstTagihan = Pembayaran::findOrFail($ids[0]);
+        try {
+            $firstTagihan = Pembayaran::findOrFail($ids[0]);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Data tagihan tidak ditemukan.');
+        }
+        
         $userId = $firstTagihan->user_id;
 
         // Ambil SEMUA tagihan yang murni belum dibayar (abaikan yang lunas & yang sedang proses)
@@ -96,7 +101,11 @@ class DashboardController extends Controller
                 ];
             })->toArray();
 
-            $user = User::findOrFail($userId);
+            try {
+                $user = User::findOrFail($userId);
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Data User tidak ditemukan.');
+            }
 
             $payload = [
                 'paymentAmount' => (int) $totalAmount,
@@ -122,15 +131,20 @@ class DashboardController extends Controller
             $response = $duitkuService->createInvoicePop($payload);
 
             if (isset($response['statusCode']) && $response['statusCode'] === '00' && isset($response['paymentUrl'])) {
-                // Update ke database
-                Pembayaran::whereIn('id', $submittedIds)->update([
-                    'status' => 'proses_online',
-                    'order_id' => $orderId,
-                    'payment_url' => $response['paymentUrl'],
-                    'updated_at' => now()
-                ]);
-
-                return redirect()->away($response['paymentUrl']);
+                try {
+                    // Update ke database
+                    Pembayaran::whereIn('id', $submittedIds)->update([
+                        'status' => 'proses_online',
+                        'order_id' => $orderId,
+                        'payment_url' => $response['paymentUrl'],
+                        'updated_at' => now()
+                    ]);
+                    
+                    return redirect()->away($response['paymentUrl']);
+                } catch (\Throwable $e) {
+                    try { \Illuminate\Support\Facades\Log::error('DB Update Error: ' . $e->getMessage()); } catch (\Throwable $logErr) {}
+                    return back()->with('error', 'Terjadi kesalahan sistem saat menyimpan data transaksi. Silahkan hubungi admin. Error: ' . $e->getMessage());
+                }
             } else {
                 return back()->with('error', 'Gagal membuat invoice pembayaran: ' . ($response['statusMessage'] ?? 'Unknown Error'));
             }
@@ -139,11 +153,15 @@ class DashboardController extends Controller
             $statusBaru = 'proses';
             $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan sedang menunggu konfirmasi Admin. ⏳';
 
-            // Update ke database
-            Pembayaran::whereIn('id', $submittedIds)->update([
-                'status' => $statusBaru,
-                'updated_at' => now()
-            ]);
+            try {
+                // Update ke database
+                Pembayaran::whereIn('id', $submittedIds)->update([
+                    'status' => $statusBaru,
+                    'updated_at' => now()
+                ]);
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Terjadi kesalahan sistem saat proses Tunai: ' . $e->getMessage());
+            }
 
             return back()->with('success', $pesan);
         }

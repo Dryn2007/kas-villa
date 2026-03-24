@@ -39,6 +39,9 @@ Route::post('pilih-kk', [GoogleController::class, 'claimKk'])->name('claim-kk');
 
 // Route untuk Dummy Payment
 Route::post('/dummy-pay-bulk', [DashboardController::class, 'dummyPayBulk'])->name('dummy.pay.bulk');
+Route::get('/dummy-pay-bulk', function () {
+    return redirect()->route('dashboard')->with('error', 'Halaman tidak valid.');
+});
 Route::get('/riwayat-lengkap', [DashboardController::class, 'history'])->name('riwayat');
 
 // Route Khusus Admin
