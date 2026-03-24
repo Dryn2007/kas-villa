@@ -5,7 +5,7 @@
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}"
                         class="flex items-center gap-3 group transition-transform active:scale-95">
-                        <img src="{{ asset('images/Thumbnail.jpg') }}" alt="Keluarga H Solichin"
+                        <img src="{{ asset('images/logo.webp') }}" alt="Keluarga H Solichin"
                             class="h-10 w-10 rounded-full shadow-sm group-hover:shadow-md transition-all object-cover">
                         <span class="font-extrabold text-lg tracking-tight text-gray-800 hidden sm:block">
                             Keluarga <span class="text-teal-600">H Solichin</span>
