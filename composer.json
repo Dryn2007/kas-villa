@@ -62,6 +62,9 @@
             "@php artisan package:discover --ansi",
             "@php scripts/cleanup_google_services.php"
         ],
+        "post-install-cmd": [
+            "@php scripts/cleanup_google_services.php"
+        ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
         ],
