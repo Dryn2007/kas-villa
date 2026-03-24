@@ -69,7 +69,7 @@ class DashboardController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', 'Data tagihan tidak ditemukan.');
         }
-        
+
         $userId = $firstTagihan->user_id;
 
         // Ambil SEMUA tagihan yang murni belum dibayar (abaikan yang lunas & yang sedang proses)
@@ -139,10 +139,13 @@ class DashboardController extends Controller
                         'payment_url' => $response['paymentUrl'],
                         'updated_at' => now()
                     ]);
-                    
+
                     return redirect()->away($response['paymentUrl']);
                 } catch (\Throwable $e) {
-                    try { \Illuminate\Support\Facades\Log::error('DB Update Error: ' . $e->getMessage()); } catch (\Throwable $logErr) {}
+                    try {
+                        \Illuminate\Support\Facades\Log::error('DB Update Error: ' . $e->getMessage());
+                    } catch (\Throwable $logErr) {
+                    }
                     return back()->with('error', 'Terjadi kesalahan sistem saat menyimpan data transaksi. Silahkan hubungi admin. Error: ' . $e->getMessage());
                 }
             } else {
