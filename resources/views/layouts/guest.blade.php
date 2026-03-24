@@ -13,8 +13,17 @@
     <meta property="og:description"
         content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
     <meta property="og:image" content="{{ asset('images/Thumbnail.jpg') }}">
+    <meta property="og:image:width" content="1920">
+    <meta property="og:image:height" content="1080">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:type" content="website">
+
+    <!-- Twitter Card untuk memastikan format besar -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Kas Villa - Sistem Pembayaran Kel H Solichin">
+    <meta name="twitter:description"
+        content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
+    <meta name="twitter:image" content="{{ asset('images/Thumbnail.jpg') }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">

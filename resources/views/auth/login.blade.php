@@ -4,8 +4,8 @@
 
         <!-- Logo & Heading -->
         <div class="text-center mb-8">
-            <img src="{{ asset('images/logo.webp') }}" alt="Keluarga H Solichin"
-                class="w-24 h-24 mx-auto mb-4 rounded-full shadow-lg transform hover:scale-105 transition-transform">
+            <img src="{{ asset('images/Thumbnail.jpg') }}" alt="Keluarga H Solichin"
+                class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-white shadow-lg transform hover:scale-105 transition-transform object-cover">
             <h1 class="text-3xl font-extrabold text-gray-800">Kas Villa</h1>
             <p class="text-sm text-gray-500 mt-2 font-medium">Keluarga H Solichin - Sistem Pengelolaan Kas</p>
         </div>
