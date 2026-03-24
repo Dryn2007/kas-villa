@@ -13,8 +13,8 @@
     <meta property="og:description"
         content="Portal transparansi dan kemudahan pembayaran iuran Kel H Solichin secara digital.">
     <meta property="og:image" content="{{ asset('images/Thumbnail.jpg') }}">
-    <meta property="og:image:width" content="1920">
-    <meta property="og:image:height" content="1080">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="675">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:type" content="website">
 
