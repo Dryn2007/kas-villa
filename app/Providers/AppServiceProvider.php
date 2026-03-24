@@ -14,8 +14,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // 2. Tambahkan kode ini agar CSS tidak diblokir browser
-        if (config('app.env') === 'production') {
+        // 2. Memaksa HTTPS berjalan di semua environment saat live di Vercel
+        // Ini memastikan asset image tidak kena error "Mixed Content"
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' || isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+            URL::forceScheme('https');
+        } elseif (config('app.env') === 'production') {
             URL::forceScheme('https');
         }
     }
