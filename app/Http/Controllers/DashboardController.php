@@ -114,7 +114,12 @@ class DashboardController extends Controller
 
             // Bikin Order ID unik (Misal: KAS-17091234-User1)
             $orderId = 'KAS-' . time() . '-' . Auth::id();
-            $amount = $totalNominal ?? 0;
+
+            // Hitung total nominal langsung dari Database
+            $amount = Pembayaran::whereIn('id', $submittedIds)->sum('nominal');
+
+            // Rumus rahasia Duitku (MD5)
+            $signature = md5($merchantCode . $orderId . $amount . $merchantKey);
 
             // Hitung total nominal dari tagihan yang dipilih
             if (!isset($totalNominal)) {
