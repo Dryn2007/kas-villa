@@ -93,10 +93,10 @@ class DashboardController extends Controller
 
             // --- Custom Filename Logic ---
             $user = Auth::user();
-
-            // Format Nama Keluarga (Sanitasi karakter aneh jadi underscore)
             $namaKeluargaSafe = preg_replace('/[^A-Za-z0-9_-]/', '_', $user->name);
-            $waktu = now()->format('s-i-H-d-m-Y');
+
+            // 🚨 PERBAIKAN WAKTU: Jam-Menit-Detik_Tanggal-Bulan-Tahun (Waktu Indonesia WIB)
+            $waktu = now()->timezone('Asia/Jakarta')->format('H-i-s_d-m-Y');
 
             $paidPayments = Pembayaran::whereIn('id', $submittedIds)->orderBy('bulan_ke')->get();
 
@@ -105,20 +105,16 @@ class DashboardController extends Controller
             } else {
                 $firstMonth = $paidPayments->first();
                 $lastMonth = $paidPayments->last();
-
                 $startMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($firstMonth->bulan_ke)->translatedFormat('F');
                 $endMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($lastMonth->bulan_ke)->translatedFormat('F');
 
-                if ($paidPayments->count() == 1) {
-                    $rangeBulan = $startMonthName;
-                } else {
-                    $rangeBulan = $startMonthName . '-' . $endMonthName;
-                }
+                $rangeBulan = ($paidPayments->count() == 1) ? $startMonthName : $startMonthName . '-' . $endMonthName;
             }
 
+            // HASIL NAMA FILE: Keluarga_Udin_15-30-05_24-03-2026_Maret-Mei
             $finalFilename = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
 
-            // Upload bukti pembayaran ke Cloudinary
+            // Upload bukti pembayaran ke Cloudinary (Utama)
             $uploadResult = $cloudinaryService->upload(
                 $request->file('bukti_pembayaran'),
                 'kas-villa/bukti-transfer',
@@ -129,10 +125,9 @@ class DashboardController extends Controller
             if (!$uploadResult['success']) {
                 return back()->with('error', 'Gagal mengupload bukti ke Cloudinary: ' . $uploadResult['message']);
             }
-
             $buktiUrl = $uploadResult['url'];
 
-            // --- Backup ke Google Drive (VERSI DIET 0 MB - BEBAS VERCEL 250MB LIMIT) ---
+            // --- Backup ke Google Drive (VERSI KILAT MAX 3 DETIK) ---
             try {
                 $file = $request->file('bukti_pembayaran');
                 $extension = $file->getClientOriginalExtension();
@@ -140,8 +135,8 @@ class DashboardController extends Controller
                 $mimeType = $file->getMimeType();
                 $fileContent = file_get_contents($file->getRealPath());
 
-                // 1. Minta "Surat Izin Masuk" (Access Token) ke Google
-                $tokenResponse = \Illuminate\Support\Facades\Http::post('https://oauth2.googleapis.com/token', [
+                // Minta Token (Max 2 Detik)
+                $tokenResponse = \Illuminate\Support\Facades\Http::timeout(2)->post('https://oauth2.googleapis.com/token', [
                     'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
                     'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
                     'refresh_token' => env('GOOGLE_DRIVE_REFRESH_TOKEN'),
@@ -152,8 +147,8 @@ class DashboardController extends Controller
                     $accessToken = $tokenResponse->json('access_token');
                     $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
 
-                    // 2. Bikin "Cangkang/Wadah" file kosong di Folder Drive Kas Villa
-                    $metaResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)
+                    // Bikin Wadah (Max 2 Detik)
+                    $metaResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(2)
                         ->post('https://www.googleapis.com/drive/v3/files', [
                             'name' => $gdFilename,
                             'parents' => [$folderId]
@@ -161,16 +156,14 @@ class DashboardController extends Controller
 
                     if ($metaResponse->successful()) {
                         $fileId = $metaResponse->json('id');
-
-                        // 3. Suntikkan foto aslinya ke dalam "Wadah" tadi
-                        \Illuminate\Support\Facades\Http::withToken($accessToken)
+                        // Suntik Foto (Max 3 Detik biar Vercel nggak keburu marah)
+                        \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(3)
                             ->withBody($fileContent, $mimeType)
                             ->patch('https://www.googleapis.com/upload/drive/v3/files/' . $fileId . '?uploadType=media');
                     }
                 }
             } catch (\Throwable $e) {
-                // Kalau internet Google lagi gangguan, catat diam-diam aja biar warga nggak kena layar error
-                Log::error('Gagal backup HTTP Google Drive: ' . $e->getMessage());
+                // Diabaikan aja kalau G-Drive lemot, yang penting Cloudinary sukses!
             }
 
             $statusBaru = 'proses';
