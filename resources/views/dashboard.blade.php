@@ -117,9 +117,9 @@
                                     },
 
                                     submitForm() {
-                                        // Validasi file upload jika diperlukan (periksa file list, bukan .value)
+                                        // Validasi file upload jika diperlukan
                                         const fileInput = document.getElementById('bukti_pembayaran');
-                                        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                                        if (!fileInput.value) {
                                             Swal.fire({
                                                 icon: 'warning',
                                                 title: 'Oops...',
@@ -128,7 +128,6 @@
                                             });
                                             return;
                                         }
-                                        // Submit form secara programatik
                                         document.getElementById('bulkPaymentForm').submit();
                                     },
 

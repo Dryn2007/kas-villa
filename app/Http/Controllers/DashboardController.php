@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Arr;
 use App\Models\Pembayaran;
 use App\Models\User;
 use App\Services\CloudinaryService;
@@ -68,7 +69,8 @@ class DashboardController extends Controller
             }
 
             $request->validate([
-                'bukti_pembayaran' => 'required',
+                // Pastikan kita menerima array files sehingga multi-upload tervalidasi
+                'bukti_pembayaran' => 'required|array',
                 'bukti_pembayaran.*' => 'image|max:5120'
             ]);
 
@@ -115,9 +117,11 @@ class DashboardController extends Controller
             // HASIL NAMA FILE: Keluarga_Udin_15-30-05_24-03-2026_Maret-Mei
             $finalFilename = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
 
-            $files = $request->file('bukti_pembayaran');
-            if (!is_array($files)) {
-                $files = [$files];
+            // Normalisasi agar selalu menjadi array UploadedFile
+            $files = Arr::wrap($request->file('bukti_pembayaran'));
+
+            if (empty($files)) {
+                return back()->with('error', 'Tidak ada file bukti yang dikirim.');
             }
 
             $uploadedUrls = [];
