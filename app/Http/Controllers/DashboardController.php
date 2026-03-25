@@ -140,9 +140,10 @@ class DashboardController extends Controller
 
                 // Membaca file secara raw agar lebih aman di Vercel
                 Storage::disk('google')->put($gdFilename, file_get_contents($file->getRealPath()));
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) { // 🚨 UBAH DARI \Exception MENJADI \Throwable
+                // Jaring \Throwable akan menangkap segala jenis ledakan fatal dari Google Drive
                 Log::error('Gagal backup ke Google Drive: ' . $e->getMessage());
-                // Jangan gagalkan proses kalau cuma gagal backup GD
+                // BIARKAN PROSES TETAP LANJUT, KARENA GAMBAR SUDAH AMAN DI CLOUDINARY!
             }
 
             $statusBaru = 'proses';
