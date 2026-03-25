@@ -13,13 +13,29 @@ class CloudinaryService
 
     public function __construct()
     {
+        $cloudName = config('cloudinary.cloud_name');
+        
+        // Handle case where cloud_name is unexpectedly "root" (Vercel bug) or empty
+        if ($cloudName == null || $cloudName == 'root') {
+             // Fallback to checking the CLOUDINARY_URL if available
+             $envUrl = env('CLOUDINARY_URL');
+             if ($envUrl) {
+                 // Parse cloud name from URL: cloudinary://key:secret@CLOUD_NAME
+                 $parts = parse_url($envUrl);
+                 if (isset($parts['host'])) {
+                     $cloudName = $parts['host'];
+                 }
+             }
+        }
+
         $this->cloudinary = new Cloudinary([
             'cloud' => [
-                'cloud_name' => config('cloudinary.cloud_name'),
-                'api_key' => config('cloudinary.api_key'),
+                'cloud_name' => $cloudName,
+                'api_key'    => config('cloudinary.api_key'),
                 'api_secret' => config('cloudinary.api_secret'),
             ]
         ]);
+
 
         $this->uploadApi = $this->cloudinary->uploadApi();
     }
