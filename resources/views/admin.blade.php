@@ -53,48 +53,61 @@
 
         <!-- TAB VERIFIKASI -->
         <div x-show="tab === 'verifikasi'" x-transition.opacity class="space-y-4">
-            @forelse($pendingPayments as $pending)
+            @forelse($pendingPayments as $groupKey => $group)
+                @php
+                    $firstPending = $group->first();
+                    $allIds = $group->pluck('id')->implode(',');
+                    $totalNominal = $group->sum('nominal');
+                    $user = $firstPending->user;
+                    $months = $group->sortBy('bulan_ke')->map(function($p) {
+                        return \Carbon\Carbon::create(2026, 3)->addMonths($p->bulan_ke)->translatedFormat('F Y');
+                    })->implode(', ');
+                    $buktiArray = $firstPending->bukti_pembayaran ? explode(',', $firstPending->bukti_pembayaran) : [];
+                @endphp
                 <div class="bg-white rounded-3xl p-5 shadow-sm border border-yellow-200 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-2 h-full bg-yellow-400"></div>
 
                     <div class="flex items-center gap-4 mb-4 ml-2">
-                        <img src="{{ $pending->user->avatar ?? 'https://ui-avatars.com/api/?name=' . urlencode($pending->user->name) . '&color=CA8A04&background=FEF9C3' }}"
+                        <img src="{{ $user->avatar ?? 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&color=CA8A04&background=FEF9C3' }}"       
                             alt="Profile" class="w-12 h-12 rounded-full object-cover border-2 border-yellow-100 shadow-sm">
                         <div>
-                            <p class="font-extrabold text-gray-800 text-lg">{{ $pending->user->name }}</p>
+                            <p class="font-extrabold text-gray-800 text-lg">{{ $user->name }}</p>
                             <p class="text-xs text-gray-500 font-medium flex items-center gap-1">
                                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd"
                                         d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00-.447.894l1.349 .808.894-1.49V6z"
                                         clip-rule="evenodd"></path>
                                 </svg>
-                                Titip bayar {{ \Carbon\Carbon::create(2026, 3)->addMonths($pending->bulan_ke)->translatedFormat('F Y') }}
+                                Titip bayar {{ $months }}
                             </p>
                         </div>
                     </div>
 
                     <div
                         class="ml-2 flex justify-between items-center bg-gray-50 p-3 rounded-2xl border border-gray-100 mb-4">
-                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Nominal Tunai</span>
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Nominal Tunai ({{ $group->count() }} bln)</span>
                         <span class="font-extrabold text-teal-600 text-lg">Rp
-                            {{ number_format($pending->nominal, 0, ',', '.') }}</span>
+                            {{ number_format($totalNominal, 0, ',', '.') }}</span>
                     </div>
 
-                    @if($pending->bukti_pembayaran)
+                    @if(count($buktiArray) > 0)
                     <div class="mb-4 ml-2">
                         <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bukti Pembayaran</p>
-                        <a href="{{ $pending->bukti_pembayaran }}" target="_blank">
-                            <img src="{{ $pending->bukti_pembayaran }}" alt="Bukti Transfer" class="w-full h-32 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition">
-                        </a>
+                        <div class="flex gap-2 overflow-x-auto pb-2">
+                            @foreach($buktiArray as $buktiUrl)
+                            <a href="{{ trim($buktiUrl) }}" target="_blank" class="flex-shrink-0">
+                                <img src="{{ trim($buktiUrl) }}" alt="Bukti Transfer" class="w-24 h-32 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition">                                                                                                                                                                                        
+                            </a>
+                            @endforeach
+                        </div>
                     </div>
                     @endif
 
                     <div class="flex gap-2 ml-2">
-                        <form action="{{ route('admin.reject', $pending->id) }}" method="POST" class="w-1/3">
+                        <form action="{{ route('admin.reject', $allIds) }}" method="POST" class="w-1/3">
                             @csrf
                             <button type="submit" onclick="return confirm('Yakin ingin menolak tagihan ini?')"
-                                class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl transition-colors border border-red-100 text-sm flex items-center justify-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl transition-colors border border-red-100 text-sm flex items-center justify-center gap-1">                                                                                                                                                                                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
@@ -102,22 +115,21 @@
                             </button>
                         </form>
 
-                        <form action="{{ route('admin.approve', $pending->id) }}" method="POST" class="w-2/3">
+                        <form action="{{ route('admin.approve', $allIds) }}" method="POST" class="w-2/3">
                             @csrf
                             <button type="submit"
-                                class="w-full bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-extrabold py-3 rounded-xl shadow-md transition-all border border-teal-500 text-sm flex justify-center items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="w-full bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-extrabold py-3 rounded-xl shadow-md transition-all border border-teal-500 text-sm flex justify-center items-center gap-2">                                                                                                                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M5 13l4 4L19 7"></path>
                                 </svg>
-                                Uang Diterima
+                                ACC Terkumpul
                             </button>
                         </form>
                     </div>
                 </div>
             @empty
                 <div class="bg-white p-8 rounded-3xl border border-dashed border-gray-300 text-center shadow-sm">
-                    <div class="text-4xl mb-3">🍃</div>
+                    <div class="text-4xl mb-3">📭</div>
                     <h3 class="font-bold text-gray-700">Antrean Kosong</h3>
                     <p class="text-xs text-gray-500 mt-1">Belum ada warga yang titip uang tunai.</p>
                 </div>

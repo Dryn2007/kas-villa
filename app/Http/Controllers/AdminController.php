@@ -22,7 +22,10 @@ class AdminController extends Controller
         $pendingPayments = Pembayaran::with('user')
             ->where('status', 'proses')
             ->orderBy('updated_at', 'asc')
-            ->get();
+            ->get()
+            ->groupBy(function ($item) {
+                return $item->user_id . '_' . $item->bukti_pembayaran;
+            });
 
         // Ambil seluruh warga beserta data pembayarannya untuk fitur Kelola KK dan Pelunasan Manual
         $users = User::with('pembayarans')->where('role', 'warga')->get();
@@ -31,26 +34,38 @@ class AdminController extends Controller
     }
 
     // 2. Fungsi untuk Menyetujui (ACC)
-    public function approve($id)
+    public function approve($ids)
     {
         if (Auth::user()->role !== 'admin') abort(403);
 
-        $pembayaran = Pembayaran::findOrFail($id);
-        $pembayaran->update(['status' => 'lunas', 'updated_at' => now()]);
+        $idArray = explode(',', $ids);
+        $pembayarans = Pembayaran::with('user')->whereIn('id', $idArray)->get();
+        if ($pembayarans->isEmpty()) return back();
 
-        return back()->with('success', 'Tagihan ' . $pembayaran->user->name . ' bulan ke-' . $pembayaran->bulan_ke . ' berhasil di-ACC! Uang sudah masuk kas. ✅');
+        Pembayaran::whereIn('id', $idArray)->update(['status' => 'lunas', 'updated_at' => now()]);
+
+        $user = $pembayarans->first()->user;
+        $namaUser = $user ? $user->name : '';
+
+        return back()->with('success', 'Tagihan ' . $namaUser . ' (' . count($idArray) . ' bulan) berhasil di-ACC! Uang sudah masuk kas. ✅');
     }
 
     // 3. Fungsi untuk Menolak (Reject)
-    public function reject($id)
+    public function reject($ids)
     {
         if (Auth::user()->role !== 'admin') abort(403);
 
-        $pembayaran = Pembayaran::findOrFail($id);
-        // Ubah statusnya jadi 'belum' agar kembali jadi kartu merah di dashboard warga
-        $pembayaran->update(['status' => 'belum', 'updated_at' => now()]);
+        $idArray = explode(',', $ids);
+        $pembayarans = Pembayaran::with('user')->whereIn('id', $idArray)->get();
+        if ($pembayarans->isEmpty()) return back();
 
-        return back()->with('error', 'Tagihan ' . $pembayaran->user->name . ' bulan ke-' . $pembayaran->bulan_ke . ' dikembalikan/ditolak. ❌');
+        // Ubah statusnya jadi 'belum' agar kembali jadi kartu merah di dashboard warga
+        Pembayaran::whereIn('id', $idArray)->update(['status' => 'belum', 'updated_at' => now()]);
+
+        $user = $pembayarans->first()->user;
+        $namaUser = $user ? $user->name : '';
+
+        return back()->with('error', 'Tagihan ' . $namaUser . ' (' . count($idArray) . ' bulan) dikembalikan/ditolak. ❌');
     }
 
     // 4. Fungsi Menambah Kepala Keluarga Baru

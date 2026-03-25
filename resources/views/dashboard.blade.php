@@ -83,7 +83,7 @@
                                     payableIds: {{ $payableIds->toJson() }},
                                     payableNominals: {{ collect($payableNominals)->toJson() }},
                                     showUpload: false,
-                                    imagePreview: null,
+                                    imagePreviews: [],
 
                                     getTotalNominal() {
                                         return this.selected.reduce((sum, id) => sum + (this.payableNominals[id] || 0), 0);
@@ -93,23 +93,26 @@
                                         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
                                     },
 
-                                    previewImage(event) {
-                                        const file = event.target.files[0];
-                                        if (file) {
-                                            if (file.size > 5 * 1024 * 1024) {
-                                                Swal.fire({
-                                                    icon: 'error',
-                                                    title: 'Ukuran Terlalu Besar',
-                                                    text: 'Maksimal ukuran file adalah 5MB!',
-                                                    confirmButtonColor: '#0d9488'
-                                                });
-                                                event.target.value = '';
-                                                this.imagePreview = null;
-                                                return;
+                                    previewImages(event) {
+                                        const files = event.target.files;
+                                        this.imagePreviews = [];
+                                        
+                                        if (files.length > 0) {
+                                            for(let i=0; i<files.length; i++) {
+                                                let file = files[i];
+                                                if (file.size > 5 * 1024 * 1024) {
+                                                    Swal.fire({
+                                                        icon: 'error',
+                                                        title: 'Ukuran Terlalu Besar',
+                                                        text: 'Maksimal ukuran tiap file adalah 5MB!',
+                                                        confirmButtonColor: '#0d9488'
+                                                    });
+                                                    event.target.value = '';
+                                                    this.imagePreviews = [];
+                                                    return;
+                                                }
+                                                this.imagePreviews.push(URL.createObjectURL(file));
                                             }
-                                            this.imagePreview = URL.createObjectURL(file);
-                                        } else {
-                                            this.imagePreview = null;
                                         }
                                     },
 
@@ -267,21 +270,23 @@
 
                                                 <div>
                                                     <label class="block text-xs font-bold text-gray-700 mb-1">
-                                                        Upload Bukti Transfer / Tunai 
-                                                        <span class="text-red-500 font-normal ml-1">(Maks 5MB)</span>
+                                                        Upload Bukti Transfer / Tunai
+                                                        <span class="text-red-500 font-normal ml-1">(Bisa multi-upload, Opsional tiap bulan)</span>
                                                     </label>
-                                                    <input type="file" name="bukti_pembayaran" id="bukti_pembayaran" required accept="image/*" 
-                                                        @change="previewImage($event)"
+                                                    <input type="file" name="bukti_pembayaran[]" id="bukti_pembayaran" required accept="image/*" multiple
+                                                        @change="previewImages($event)"
                                                         class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
                                                 </div>
 
-                                                <div x-show="imagePreview" style="display: none;" class="w-full flex justify-center border-2 border-dashed border-teal-200 rounded-2xl p-2 bg-gray-50 mt-1">
-                                                    <div class="relative w-[180px] w-max-[100%] aspect-[9/16] bg-black bg-opacity-5 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
-                                                        <img :src="imagePreview" class="w-full h-full object-contain" alt="Preview Bukti">
-                                                        <button type="button" @click="imagePreview = null; document.getElementById('bukti_pembayaran').value = ''" class="absolute top-2 right-2 bg-white text-red-500 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center shadow-md font-bold hover:bg-red-50">
+                                                <div x-show="imagePreviews.length > 0" style="display: none;" class="w-full flex justify-center flex-wrap gap-2 border-2 border-dashed border-teal-200 rounded-2xl p-2 bg-gray-50 mt-1">
+                                                    <template x-for="(img, idx) in imagePreviews" :key="idx">
+                                                    <div class="relative w-[150px] aspect-[9/16] bg-black bg-opacity-5 rounded-xl overflow-hidden shadow-inner flex items-center justify-center mb-1">
+                                                        <img :src="img" class="w-full h-full object-contain" alt="Preview Bukti">
+                                                        <button type="button" @click="imagePreviews.splice(idx, 1); if(imagePreviews.length === 0){document.getElementById('bukti_pembayaran').value = '';}" class="absolute top-2 right-2 bg-white text-red-500 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center shadow-md font-bold hover:bg-red-50">
                                                             ✕
                                                         </button>
                                                     </div>
+                                                    </template>
                                                 </div>
 
                                                 <button type="button" @click="submitForm()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border border-yellow-300 hover:shadow-lg hover:-translate-y-1">

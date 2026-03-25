@@ -68,7 +68,8 @@ class DashboardController extends Controller
             }
 
             $request->validate([
-                'bukti_pembayaran' => 'required|image|max:5120'
+                'bukti_pembayaran' => 'required',
+                'bukti_pembayaran.*' => 'image|max:5120'
             ]);
 
             $firstTagihan = Pembayaran::findOrFail($ids[0]);
@@ -114,57 +115,70 @@ class DashboardController extends Controller
             // HASIL NAMA FILE: Keluarga_Udin_15-30-05_24-03-2026_Maret-Mei
             $finalFilename = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
 
-            // Upload bukti pembayaran ke Cloudinary (Utama)
-            $uploadResult = $cloudinaryService->upload(
-                $request->file('bukti_pembayaran'),
-                'kas-villa/bukti-transfer',
-                'auto',
-                $finalFilename
-            );
-
-            if (!$uploadResult['success']) {
-                return back()->with('error', 'Gagal mengupload bukti ke Cloudinary: ' . $uploadResult['message']);
+            $files = $request->file('bukti_pembayaran');
+            if (!is_array($files)) {
+                $files = [$files];
             }
-            $buktiUrl = $uploadResult['url'];
 
-            // --- Backup ke Google Drive (VERSI KILAT MAX 3 DETIK) ---
-            try {
-                $file = $request->file('bukti_pembayaran');
-                $extension = $file->getClientOriginalExtension();
-                $gdFilename = $finalFilename . '.' . $extension;
-                $mimeType = $file->getMimeType();
-                $fileContent = file_get_contents($file->getRealPath());
+            $uploadedUrls = [];
 
-                // Minta Token (Max 2 Detik)
-                $tokenResponse = \Illuminate\Support\Facades\Http::timeout(2)->post('https://oauth2.googleapis.com/token', [
-                    'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
-                    'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
-                    'refresh_token' => env('GOOGLE_DRIVE_REFRESH_TOKEN'),
-                    'grant_type' => 'refresh_token',
-                ]);
+            foreach ($files as $index => $file) {
+                $fileSuffix = count($files) > 1 ? "_" . ($index + 1) : "";
+                $currentFilename = $finalFilename . $fileSuffix;
 
-                if ($tokenResponse->successful()) {
-                    $accessToken = $tokenResponse->json('access_token');
-                    $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
+                // Upload bukti pembayaran ke Cloudinary (Utama)
+                $uploadResult = $cloudinaryService->upload(
+                    $file,
+                    'kas-villa/bukti-transfer',
+                    'auto',
+                    $currentFilename
+                );
 
-                    // Bikin Wadah (Max 2 Detik)
-                    $metaResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(2)
-                        ->post('https://www.googleapis.com/drive/v3/files', [
-                            'name' => $gdFilename,
-                            'parents' => [$folderId]
-                        ]);
-
-                    if ($metaResponse->successful()) {
-                        $fileId = $metaResponse->json('id');
-                        // Suntik Foto (Max 3 Detik biar Vercel nggak keburu marah)
-                        \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(3)
-                            ->withBody($fileContent, $mimeType)
-                            ->patch('https://www.googleapis.com/upload/drive/v3/files/' . $fileId . '?uploadType=media');
-                    }
+                if (!$uploadResult['success']) {
+                    return back()->with('error', 'Gagal mengupload bukti ke Cloudinary: ' . $uploadResult['message']);
                 }
-            } catch (\Throwable $e) {
-                // Diabaikan aja kalau G-Drive lemot, yang penting Cloudinary sukses!
+                $uploadedUrls[] = $uploadResult['url'];
+
+                // --- Backup ke Google Drive (VERSI KILAT MAX 3 DETIK) ---
+                try {
+                    $extension = $file->getClientOriginalExtension();
+                    $gdFilename = $currentFilename . '.' . $extension;
+                    $mimeType = $file->getMimeType();
+                    $fileContent = file_get_contents($file->getRealPath());
+
+                    // Minta Token (Max 2 Detik)
+                    $tokenResponse = \Illuminate\Support\Facades\Http::timeout(2)->post('https://oauth2.googleapis.com/token', [
+                        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+                        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+                        'refresh_token' => env('GOOGLE_DRIVE_REFRESH_TOKEN'),
+                        'grant_type' => 'refresh_token',
+                    ]);
+
+                    if ($tokenResponse->successful()) {
+                        $accessToken = $tokenResponse->json('access_token');
+                        $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
+
+                        // Bikin Wadah (Max 2 Detik)
+                        $metaResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(2)
+                            ->post('https://www.googleapis.com/drive/v3/files', [
+                                'name' => $gdFilename,
+                                'parents' => [$folderId]
+                            ]);
+
+                        if ($metaResponse->successful()) {
+                            $fileId = $metaResponse->json('id');
+                            // Suntik Foto (Max 3 Detik biar Vercel nggak keburu marah)
+                            \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(3)
+                                ->withBody($fileContent, $mimeType)
+                                ->patch('https://www.googleapis.com/upload/drive/v3/files/' . $fileId . '?uploadType=media');
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Diabaikan aja kalau G-Drive lemot, yang penting Cloudinary sukses!
+                }
             }
+
+            $buktiUrlStr = implode(',', $uploadedUrls);
 
             $statusBaru = 'proses';
             $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan beserta bukti pembayaran berhasil dikirim. Menunggu konfirmasi Admin. ⏳';
@@ -172,7 +186,7 @@ class DashboardController extends Controller
             // Update ke database
             Pembayaran::whereIn('id', $submittedIds)->update([
                 'status' => $statusBaru,
-                'bukti_pembayaran' => $buktiUrl,
+                'bukti_pembayaran' => $buktiUrlStr,
                 'updated_at' => now()
             ]);
 
