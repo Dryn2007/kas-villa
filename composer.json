@@ -12,12 +12,10 @@
         "php": "^8.3",
         "barryvdh/laravel-dompdf": "^3.1",
         "cloudinary/cloudinary_php": "^3.1",
-        "google/apiclient": "*",
         "laravel/framework": "^13.0",
         "laravel/socialite": "^5.25",
         "laravel/tinker": "^3.0",
-        "maatwebsite/excel": "^1.1",
-        "masbug/flysystem-google-drive-ext": "*"
+        "maatwebsite/excel": "^1.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -57,14 +55,9 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
-        "pre-autoload-dump": "Google\\Task\\Composer::cleanup",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi",
-            "@php scripts/cleanup_google_services.php"
-        ],
-        "post-install-cmd": [
-            "@php scripts/cleanup_google_services.php"
+            "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
@@ -82,9 +75,6 @@
         ]
     },
     "extra": {
-        "google/apiclient-services": [
-            "Drive"
-        ],
         "laravel": {
             "dont-discover": []
         }
