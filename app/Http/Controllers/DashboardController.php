@@ -59,120 +59,107 @@ class DashboardController extends Controller
     // Fungsi untuk Bayar Sekaligus
     public function dummyPayBulk(Request $request, CloudinaryService $cloudinaryService)
     {
-        $ids = $request->input('tagihan_ids', []);
-
-        if (empty($ids)) {
-            return back()->with('error', 'Pilih minimal satu bulan untuk dibayar.');
-        }
-
-        $request->validate([
-            'bukti_pembayaran' => 'required|image|max:5120'
-        ]);
-
+        // 🚨 TANGKAP SEMUA ERROR FATAL BIAR GAK JADI LAYAR HITAM 500
         try {
-            $firstTagihan = Pembayaran::findOrFail($ids[0]);
-        } catch (\Throwable $e) {
-            return back()->with('error', 'Data tagihan tidak ditemukan.');
-        }
+            $ids = $request->input('tagihan_ids', []);
 
-        $userId = $firstTagihan->user_id;
-
-        // Ambil SEMUA tagihan yang murni belum dibayar (abaikan yang lunas & yang sedang proses)
-        $allUnpaid = Pembayaran::where('user_id', $userId)
-            ->whereNotIn('status', ['lunas', 'proses', 'proses_online'])
-            ->orderBy('bulan_ke', 'asc')
-            ->get();
-
-        $jumlahBulanYgMauDibayar = count($ids);
-        $idYangSah = $allUnpaid->take($jumlahBulanYgMauDibayar)->pluck('id')->toArray();
-
-        $submittedIds = array_map('intval', $ids);
-        sort($submittedIds);
-        sort($idYangSah);
-
-        if ($submittedIds !== $idYangSah) {
-            return back()->with('error', 'Pembayaran harus berurutan! Jangan nge-cheat ya 😉');
-        }
-
-        // --- Custom Filename Logic ---
-        $user = Auth::user();
-
-        // Format Nama Keluarga (Sanitasi karakter aneh jadi underscore)
-        $namaKeluargaSafe = preg_replace('/[^A-Za-z0-9_-]/', '_', $user->name);
-
-        // Format Waktu: Detik-Menit-Jam-tanggal-bulan-Tahun
-        $waktu = now()->format('s-i-H-d-m-Y');
-
-        // Format Range Bulan
-        // Ambil data bulan dari pembayaran yang dipilih
-        $paidPayments = Pembayaran::whereIn('id', $submittedIds)->orderBy('bulan_ke')->get();
-
-        if ($paidPayments->isEmpty()) {
-            // Fallback jika aneh
-            $rangeBulan = 'Unknown';
-        } else {
-            $firstMonth = $paidPayments->first();
-            $lastMonth = $paidPayments->last();
-
-            // Base date assumed March 2026 based on View Logic
-            $startMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($firstMonth->bulan_ke)->translatedFormat('F');
-            $endMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($lastMonth->bulan_ke)->translatedFormat('F');
-
-            if ($paidPayments->count() == 1) {
-                $rangeBulan = $startMonthName;
-            } else {
-                $rangeBulan = $startMonthName . '-' . $endMonthName;
+            if (empty($ids)) {
+                return back()->with('error', 'Pilih minimal satu bulan untuk dibayar.');
             }
-        }
 
-        // Gabungkan jadi Nama File Final
-        // Contoh: Keluarga_Udin_12-30-10-24-03-2026_Maret-Mei
-        $finalFilename = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
+            $request->validate([
+                'bukti_pembayaran' => 'required|image|max:5120'
+            ]);
 
+            $firstTagihan = Pembayaran::findOrFail($ids[0]);
+            $userId = $firstTagihan->user_id;
 
-        // Upload bukti pembayaran ke Cloudinary dengan Custom Public ID
-        $uploadResult = $cloudinaryService->upload(
-            $request->file('bukti_pembayaran'),
-            'kas-villa/bukti-transfer',
-            'auto',
-            $finalFilename
-        );
+            // Ambil SEMUA tagihan yang murni belum dibayar
+            $allUnpaid = Pembayaran::where('user_id', $userId)
+                ->whereNotIn('status', ['lunas', 'proses', 'proses_online'])
+                ->orderBy('bulan_ke', 'asc')
+                ->get();
 
-        if (!$uploadResult['success']) {
-            return back()->with('error', 'Gagal mengupload bukti pembayaran: ' . $uploadResult['message']);
-        }
+            $jumlahBulanYgMauDibayar = count($ids);
+            $idYangSah = $allUnpaid->take($jumlahBulanYgMauDibayar)->pluck('id')->toArray();
 
-        $buktiUrl = $uploadResult['url'];
+            $submittedIds = array_map('intval', $ids);
+            sort($submittedIds);
+            sort($idYangSah);
 
-        // --- Backup ke Google Drive ---
-        try {
-            $file = $request->file('bukti_pembayaran');
-            // Gunakan nama file yang sama + ekstensi asli
-            $extension = $file->getClientOriginalExtension();
-            $gdFilename = $finalFilename . '.' . $extension;
+            if ($submittedIds !== $idYangSah) {
+                return back()->with('error', 'Pembayaran harus berurutan! Jangan nge-cheat ya 😉');
+            }
 
-            // Upload ke Disk 'google'
-            Storage::disk('google')->put($gdFilename, file_get_contents($file));
-        } catch (\Exception $e) {
-            // Log error tapi jangan gagalkan transaksi user, karena ini cuma backup
-            Log::error('Gagal backup ke Google Drive: ' . $e->getMessage());
-        }
+            // --- Custom Filename Logic ---
+            $user = Auth::user();
 
-        $statusBaru = 'proses';
-        $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan beserta bukti pembayaran berhasil dikirim. Menunggu konfirmasi Admin. ⏳';
+            // Format Nama Keluarga (Sanitasi karakter aneh jadi underscore)
+            $namaKeluargaSafe = preg_replace('/[^A-Za-z0-9_-]/', '_', $user->name);
+            $waktu = now()->format('s-i-H-d-m-Y');
 
-        try {
+            $paidPayments = Pembayaran::whereIn('id', $submittedIds)->orderBy('bulan_ke')->get();
+
+            if ($paidPayments->isEmpty()) {
+                $rangeBulan = 'Unknown';
+            } else {
+                $firstMonth = $paidPayments->first();
+                $lastMonth = $paidPayments->last();
+
+                $startMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($firstMonth->bulan_ke)->translatedFormat('F');
+                $endMonthName = \Carbon\Carbon::create(2026, 3)->addMonths($lastMonth->bulan_ke)->translatedFormat('F');
+
+                if ($paidPayments->count() == 1) {
+                    $rangeBulan = $startMonthName;
+                } else {
+                    $rangeBulan = $startMonthName . '-' . $endMonthName;
+                }
+            }
+
+            $finalFilename = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
+
+            // Upload bukti pembayaran ke Cloudinary
+            $uploadResult = $cloudinaryService->upload(
+                $request->file('bukti_pembayaran'),
+                'kas-villa/bukti-transfer',
+                'auto',
+                $finalFilename
+            );
+
+            if (!$uploadResult['success']) {
+                return back()->with('error', 'Gagal mengupload bukti ke Cloudinary: ' . $uploadResult['message']);
+            }
+
+            $buktiUrl = $uploadResult['url'];
+
+            // --- Backup ke Google Drive ---
+            try {
+                $file = $request->file('bukti_pembayaran');
+                $extension = $file->getClientOriginalExtension();
+                $gdFilename = $finalFilename . '.' . $extension;
+
+                // Membaca file secara raw agar lebih aman di Vercel
+                Storage::disk('google')->put($gdFilename, file_get_contents($file->getRealPath()));
+            } catch (\Exception $e) {
+                Log::error('Gagal backup ke Google Drive: ' . $e->getMessage());
+                // Jangan gagalkan proses kalau cuma gagal backup GD
+            }
+
+            $statusBaru = 'proses';
+            $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan beserta bukti pembayaran berhasil dikirim. Menunggu konfirmasi Admin. ⏳';
+
             // Update ke database
             Pembayaran::whereIn('id', $submittedIds)->update([
                 'status' => $statusBaru,
                 'bukti_pembayaran' => $buktiUrl,
                 'updated_at' => now()
             ]);
-        } catch (\Throwable $e) {
-            return back()->with('error', 'Terjadi kesalahan sistem saat proses: ' . $e->getMessage());
-        }
 
-        return back()->with('success', $pesan);
+            return back()->with('success', $pesan);
+        } catch (\Throwable $e) {
+            // KALAU ADA YANG MELEDAK, TAMPILKAN DI KOTAK MERAH!
+            return back()->with('error', 'Sistem Gagal (Error 500): ' . $e->getMessage() . ' di baris ' . $e->getLine());
+        }
     }
 
     // Fungsi untuk Halaman Riwayat Semua Pembayaran
