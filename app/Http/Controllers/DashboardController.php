@@ -132,18 +132,45 @@ class DashboardController extends Controller
 
             $buktiUrl = $uploadResult['url'];
 
-            // --- Backup ke Google Drive ---
+            // --- Backup ke Google Drive (VERSI DIET 0 MB - BEBAS VERCEL 250MB LIMIT) ---
             try {
                 $file = $request->file('bukti_pembayaran');
                 $extension = $file->getClientOriginalExtension();
                 $gdFilename = $finalFilename . '.' . $extension;
+                $mimeType = $file->getMimeType();
+                $fileContent = file_get_contents($file->getRealPath());
 
-                // Membaca file secara raw agar lebih aman di Vercel
-                Storage::disk('google')->put($gdFilename, file_get_contents($file->getRealPath()));
-            } catch (\Throwable $e) { // 🚨 UBAH DARI \Exception MENJADI \Throwable
-                // Jaring \Throwable akan menangkap segala jenis ledakan fatal dari Google Drive
-                Log::error('Gagal backup ke Google Drive: ' . $e->getMessage());
-                // BIARKAN PROSES TETAP LANJUT, KARENA GAMBAR SUDAH AMAN DI CLOUDINARY!
+                // 1. Minta "Surat Izin Masuk" (Access Token) ke Google
+                $tokenResponse = \Illuminate\Support\Facades\Http::post('https://oauth2.googleapis.com/token', [
+                    'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+                    'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+                    'refresh_token' => env('GOOGLE_DRIVE_REFRESH_TOKEN'),
+                    'grant_type' => 'refresh_token',
+                ]);
+
+                if ($tokenResponse->successful()) {
+                    $accessToken = $tokenResponse->json('access_token');
+                    $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
+
+                    // 2. Bikin "Cangkang/Wadah" file kosong di Folder Drive Kas Villa
+                    $metaResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)
+                        ->post('https://www.googleapis.com/drive/v3/files', [
+                            'name' => $gdFilename,
+                            'parents' => [$folderId]
+                        ]);
+
+                    if ($metaResponse->successful()) {
+                        $fileId = $metaResponse->json('id');
+
+                        // 3. Suntikkan foto aslinya ke dalam "Wadah" tadi
+                        \Illuminate\Support\Facades\Http::withToken($accessToken)
+                            ->withBody($fileContent, $mimeType)
+                            ->patch('https://www.googleapis.com/upload/drive/v3/files/' . $fileId . '?uploadType=media');
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Kalau internet Google lagi gangguan, catat diam-diam aja biar warga nggak kena layar error
+                Log::error('Gagal backup HTTP Google Drive: ' . $e->getMessage());
             }
 
             $statusBaru = 'proses';
