@@ -63,16 +63,24 @@ class DashboardController extends Controller
         // 🚨 TANGKAP SEMUA ERROR FATAL BIAR GAK JADI LAYAR HITAM 500
         try {
             $ids = $request->input('tagihan_ids', []);
+            $uploadMethod = $request->input('upload_method', 'satu');
 
             if (empty($ids)) {
                 return back()->with('error', 'Pilih minimal satu bulan untuk dibayar.');
             }
 
-            $request->validate([
-                // Pastikan kita menerima array files sehingga multi-upload tervalidasi
-                'bukti_pembayaran' => 'required|array',
-                'bukti_pembayaran.*' => 'image|max:5120'
-            ]);
+            if ($uploadMethod === 'satu') {
+                $request->validate([
+                    'bukti_pembayaran' => 'required|array',
+                    'bukti_pembayaran.*' => 'image|max:5120'
+                ]);
+            } else {
+                $request->validate([
+                    'bukti_pembayaran_pisah' => 'required|array',
+                    'bukti_pembayaran_pisah.*' => 'image|max:5120',
+                    'bukti_pembayaran_months' => 'required|array'
+                ]);
+            }
 
             $firstTagihan = Pembayaran::findOrFail($ids[0]);
             $userId = $firstTagihan->user_id;
@@ -117,82 +125,105 @@ class DashboardController extends Controller
             // HASIL NAMA FILE: Keluarga_Udin_15-30-05_24-03-2026_Maret-Mei
             $finalFilename = "{$namaKeluargaSafe}_{$waktu}_{$rangeBulan}";
 
-            // Normalisasi agar selalu menjadi array UploadedFile
-            $files = Arr::wrap($request->file('bukti_pembayaran'));
-
-            if (empty($files)) {
-                return back()->with('error', 'Tidak ada file bukti yang dikirim.');
-            }
-
-            $uploadedUrls = [];
-
-            foreach ($files as $index => $file) {
-                $fileSuffix = count($files) > 1 ? "_" . ($index + 1) : "";
-                $currentFilename = $finalFilename . $fileSuffix;
-
-                // Upload bukti pembayaran ke Cloudinary (Utama)
-                $uploadResult = $cloudinaryService->upload(
-                    $file,
-                    'kas-villa/bukti-transfer',
-                    'auto',
-                    $currentFilename
-                );
-
-                if (!$uploadResult['success']) {
-                    return back()->with('error', 'Gagal mengupload bukti ke Cloudinary: ' . $uploadResult['message']);
-                }
-                $uploadedUrls[] = $uploadResult['url'];
-
-                // --- Backup ke Google Drive (VERSI KILAT MAX 3 DETIK) ---
-                try {
-                    $extension = $file->getClientOriginalExtension();
-                    $gdFilename = $currentFilename . '.' . $extension;
-                    $mimeType = $file->getMimeType();
-                    $fileContent = file_get_contents($file->getRealPath());
-
-                    // Minta Token (Max 2 Detik)
-                    $tokenResponse = \Illuminate\Support\Facades\Http::timeout(2)->post('https://oauth2.googleapis.com/token', [
-                        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
-                        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
-                        'refresh_token' => env('GOOGLE_DRIVE_REFRESH_TOKEN'),
-                        'grant_type' => 'refresh_token',
-                    ]);
-
-                    if ($tokenResponse->successful()) {
-                        $accessToken = $tokenResponse->json('access_token');
-                        $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
-
-                        // Bikin Wadah (Max 2 Detik)
-                        $metaResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(2)
-                            ->post('https://www.googleapis.com/drive/v3/files', [
-                                'name' => $gdFilename,
-                                'parents' => [$folderId]
-                            ]);
-
-                        if ($metaResponse->successful()) {
-                            $fileId = $metaResponse->json('id');
-                            // Suntik Foto (Max 3 Detik biar Vercel nggak keburu marah)
-                            \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(3)
-                                ->withBody($fileContent, $mimeType)
-                                ->patch('https://www.googleapis.com/upload/drive/v3/files/' . $fileId . '?uploadType=media');
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // Diabaikan aja kalau G-Drive lemot, yang penting Cloudinary sukses!
-                }
-            }
-
-            $buktiUrlStr = implode(',', $uploadedUrls);
-
             $statusBaru = 'proses';
             $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan beserta bukti pembayaran berhasil dikirim. Menunggu konfirmasi Admin. ⏳';
 
-            // Update ke database
-            Pembayaran::whereIn('id', $submittedIds)->update([
-                'status' => $statusBaru,
-                'bukti_pembayaran' => $buktiUrlStr,
-                'updated_at' => now()
-            ]);
+            if ($uploadMethod === 'satu') {
+                $files = Arr::wrap($request->file('bukti_pembayaran'));
+
+                if (empty($files)) {
+                    return back()->with('error', 'Tidak ada file bukti yang dikirim.');
+                }
+
+                $uploadedUrls = [];
+
+                foreach ($files as $index => $file) {
+                    $fileSuffix = count($files) > 1 ? "_" . ($index + 1) : "";
+                    $currentFilename = $finalFilename . $fileSuffix;
+
+                    $uploadResult = $cloudinaryService->upload(
+                        $file,
+                        'kas-villa/bukti-transfer/' . $namaKeluargaSafe,
+                        'auto',
+                        $currentFilename
+                    );
+
+                    if (!$uploadResult['success']) {
+                        return back()->with('error', 'Gagal mengupload bukti ke Cloudinary: ' . $uploadResult['message']);
+                    }
+                    $uploadedUrls[] = $uploadResult['url'];
+
+                    // GDrive backup
+                    $this->uploadToGDrive($file, $currentFilename, $namaKeluargaSafe);
+                }
+
+                $buktiUrlStr = implode(',', $uploadedUrls);
+
+                Pembayaran::whereIn('id', $submittedIds)->update([
+                    'status' => $statusBaru,
+                    'bukti_pembayaran' => $buktiUrlStr,
+                    'updated_at' => now()
+                ]);
+            } else {
+                // Metode upload pisah (Tandai bukti pembayaran perfoto)
+                $filesPisah = $request->file('bukti_pembayaran_pisah');
+                $monthsPisah = $request->input('bukti_pembayaran_months');
+
+                if (empty($filesPisah) || empty($monthsPisah)) {
+                    return back()->with('error', 'Silakan upload bukti dan pilih bulannya terlebih dahulu.');
+                }
+
+                $tagihanUpdates = [];
+
+                foreach ($filesPisah as $idx => $file) {
+                    if (!isset($monthsPisah[$idx])) continue;
+
+                    $fileSuffix = count($filesPisah) > 1 ? "_part" . ($idx + 1) : "";
+                    $currentFilename = $finalFilename . $fileSuffix;
+
+                    $uploadResult = $cloudinaryService->upload(
+                        $file,
+                        'kas-villa/bukti-transfer/' . $namaKeluargaSafe,
+                        'auto',
+                        $currentFilename
+                    );
+
+                    if (!$uploadResult['success']) {
+                        return back()->with('error', 'Gagal mengupload bukti ke Cloudinary: ' . $uploadResult['message']);
+                    }
+                    $uploadedUrl = $uploadResult['url'];
+
+                    // GDrive backup
+                    $this->uploadToGDrive($file, $currentFilename, $namaKeluargaSafe);
+
+                    foreach ($monthsPisah[$idx] as $tid) {
+                        if (!isset($tagihanUpdates[$tid])) {
+                            $tagihanUpdates[$tid] = [];
+                        }
+                        $tagihanUpdates[$tid][] = $uploadedUrl;
+                    }
+                }
+
+                // Update masing-masing record tagihan dengan foto spesifiknya
+                foreach ($tagihanUpdates as $tid => $urls) {
+                    if (in_array($tid, $submittedIds)) {
+                        Pembayaran::where('id', $tid)->update([
+                            'status' => $statusBaru,
+                            'bukti_pembayaran' => implode(',', $urls),
+                            'updated_at' => now()
+                        ]);
+                    }
+                }
+
+                // Jika masih ada sisa ID tagihan yg ikut dikirim tp ga ditandai foto, anggap proses saja (bisa aja admin cek manual)
+                $unupdatedIds = array_diff($submittedIds, array_keys($tagihanUpdates));
+                if (!empty($unupdatedIds)) {
+                    Pembayaran::whereIn('id', $unupdatedIds)->update([
+                        'status' => $statusBaru,
+                        'updated_at' => now()
+                    ]);
+                }
+            }
 
             return back()->with('success', $pesan);
         } catch (\Throwable $e) {
@@ -210,5 +241,70 @@ class DashboardController extends Controller
             ->paginate(15);
 
         return view('history', compact('semuaHistory'));
+    }
+
+    private function uploadToGDrive($file, $currentFilename, $namaKeluargaSafe)
+    {
+        try {
+            $extension = $file->getClientOriginalExtension();
+            $gdFilename = $currentFilename . '.' . $extension;
+            $mimeType = $file->getMimeType();
+            $fileContent = file_get_contents($file->getRealPath());
+
+            // Minta Token (Max 2 Detik)
+            $tokenResponse = \Illuminate\Support\Facades\Http::timeout(2)->post('https://oauth2.googleapis.com/token', [
+                'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+                'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+                'refresh_token' => env('GOOGLE_DRIVE_REFRESH_TOKEN'),
+                'grant_type' => 'refresh_token',
+            ]);
+
+            if ($tokenResponse->successful()) {
+                $accessToken = $tokenResponse->json('access_token');
+                $parentFolderId = env('GOOGLE_DRIVE_FOLDER_ID');
+
+                // Cari apakah folder user sudah ada
+                $searchResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(2)
+                    ->get('https://www.googleapis.com/drive/v3/files', [
+                        'q' => "mimeType='application/vnd.google-apps.folder' and name='" . $namaKeluargaSafe . "' and '" . $parentFolderId . "' in parents and trashed=false",
+                        'fields' => 'files(id, name)'
+                    ]);
+
+                $folderId = null;
+                if ($searchResponse->successful() && count($searchResponse->json('files')) > 0) {
+                    $folderId = $searchResponse->json('files')[0]['id'];
+                } else {
+                    // Buat folder baru di dalam folder utama
+                    $createFolderResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(2)
+                        ->post('https://www.googleapis.com/drive/v3/files', [
+                            'name' => $namaKeluargaSafe,
+                            'mimeType' => 'application/vnd.google-apps.folder',
+                            'parents' => [$parentFolderId]
+                        ]);
+                    if ($createFolderResponse->successful()) {
+                        $folderId = $createFolderResponse->json('id');
+                    } else {
+                        $folderId = $parentFolderId; // fallback ke root jika gagal buat
+                    }
+                }
+
+                // Bikin Wadah (Max 2 Detik)
+                $metaResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(2)
+                    ->post('https://www.googleapis.com/drive/v3/files', [
+                        'name' => $gdFilename,
+                        'parents' => [$folderId]
+                    ]);
+
+                if ($metaResponse->successful()) {
+                    $fileId = $metaResponse->json('id');
+                    // Suntik Foto (Max 3 Detik)
+                    \Illuminate\Support\Facades\Http::withToken($accessToken)->timeout(3)
+                        ->withBody($fileContent, $mimeType)
+                        ->patch('https://www.googleapis.com/upload/drive/v3/files/' . $fileId . '?uploadType=media');
+                }
+            }
+        } catch (\Throwable $e) {
+            // Diabaikan aja kalau G-Drive lemot
+        }
     }
 }

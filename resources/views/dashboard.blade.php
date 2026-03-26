@@ -76,14 +76,27 @@
             $payableTagihans = $tagihanKk->whereNotIn('status', ['lunas', 'proses'])->values();
             $payableIds = $payableTagihans->pluck('id');
             $payableNominals = $payableTagihans->pluck('nominal', 'id');
+            $payableMonths = $payableTagihans->mapWithKeys(function($item) {
+                return [$item->id => \Carbon\Carbon::create(2026, 3)->addMonths($item->bulan_ke)->translatedFormat('F')];
+            });
                                 @endphp
 
                                 <form id="bulkPaymentForm" action="{{ route('dummy.pay.bulk') }}" method="POST" enctype="multipart/form-data" x-data="{
                                     selected: [],
+                                    uploadMethod: 'satu',
+                                    photoGroups: [{ id: Date.now(), preview: '', months: [] }],
                                     payableIds: {{ $payableIds->toJson() }},
                                     payableNominals: {{ collect($payableNominals)->toJson() }},
+                                    payableMonths: {{ collect($payableMonths)->toJson() }},
                                     showUpload: false,
                                     imagePreviews: [],
+                                    
+                                    addPhotoGroup() {
+                                        this.photoGroups.push({ id: Date.now(), preview: '', months: [] });
+                                    },
+                                    removePhotoGroup(idx) {
+                                        this.photoGroups.splice(idx, 1);
+                                    },
 
                                     getTotalNominal() {
                                         return this.selected.reduce((sum, id) => sum + (this.payableNominals[id] || 0), 0);
@@ -117,17 +130,51 @@
                                     },
 
                                     submitForm() {
-                                        // Validasi file upload jika diperlukan
-                                        const fileInput = document.getElementById('bukti_pembayaran');
-                                        if (!fileInput.value) {
-                                            Swal.fire({
-                                                icon: 'warning',
-                                                title: 'Oops...',
-                                                text: 'Silakan upload bukti pembayaran terlebih dahulu!',
-                                                confirmButtonColor: '#0d9488'
+                                        if (this.uploadMethod === 'satu') {
+                                            const fileInput = document.getElementById('bukti_pembayaran');
+                                            if (!fileInput || !fileInput.value) {
+                                                Swal.fire({
+                                                    icon: 'warning',
+                                                    title: 'Oops...',
+                                                    text: 'Silakan upload bukti pembayaran terlebih dahulu!',
+                                                    confirmButtonColor: '#0d9488'
+                                                });
+                                                return;
+                                            }
+                                        } else {
+                                            // Validasi untuk metode pisah
+                                            let hasEmptyFile = false;
+                                            document.querySelectorAll('.bukti_pisah').forEach(input => {
+                                                if (!input.value) hasEmptyFile = true;
                                             });
-                                            return;
+                                            
+                                            if (hasEmptyFile || this.photoGroups.length === 0) {
+                                                Swal.fire({
+                                                    icon: 'warning',
+                                                    title: 'Oops...',
+                                                    text: 'Pastikan SEMUA foto telah diupload.',
+                                                    confirmButtonColor: '#0d9488'
+                                                });
+                                                return;
+                                            }
+                                            
+                                            // Cek apakah semua bulan yang dipilih udah ada yg nandain
+                                            let allTaggedMonths = this.photoGroups.reduce((acc, group) => {
+                                                return acc.concat(group.months);
+                                            }, []);
+                                            
+                                            let untagged = this.selected.filter(id => !allTaggedMonths.includes(id));
+                                            if (untagged.length > 0) {
+                                                Swal.fire({
+                                                    icon: 'warning',
+                                                    title: 'Oops...',
+                                                    text: 'Ada bulan tagihan yang belum ditandai ke foto manapun!',
+                                                    confirmButtonColor: '#0d9488'
+                                                });
+                                                return;
+                                            }
                                         }
+                                        
                                         document.getElementById('bulkPaymentForm').submit();
                                     },
 
@@ -268,28 +315,81 @@
                                                     <p class="text-xl font-extrabold text-teal-900 text-center mt-1" x-text="formatRupiah(getTotalNominal())"></p>
                                                 </div>
 
-                                                <div>
+                                                <div x-show="selected.length > 1" class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm mt-1">
+                                                    <label class="block text-xs font-bold text-gray-700 mb-2">Pilih Cara Upload:</label>
+                                                    <div class="flex flex-col gap-2">
+                                                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                                            <input type="radio" value="satu" x-model="uploadMethod" name="upload_method" class="text-teal-600 focus:ring-teal-500 w-4 h-4">
+                                                            <span>Jadikan satu? (1 Foto utk Semua)</span>
+                                                        </label>
+                                                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                                            <input type="radio" value="pisah" x-model="uploadMethod" name="upload_method" class="text-teal-600 focus:ring-teal-500 w-4 h-4">
+                                                            <span>Tandai per foto (Bisa multi foto/bulan)</span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <!-- OPSI 1: JADIKAN SATU -->
+                                                <div x-show="uploadMethod === 'satu'" class="mt-1">
                                                     <label class="block text-xs font-bold text-gray-700 mb-1">
                                                         Upload Bukti Transfer / Tunai
-                                                        <span class="text-red-500 font-normal ml-1">(Bisa multi-upload, Opsional tiap bulan)</span>
+                                                        <span class="text-red-500 font-normal ml-1">(Bisa multi-upload)</span>
                                                     </label>
-                                                    <input type="file" name="bukti_pembayaran[]" id="bukti_pembayaran" required accept="image/*" multiple
+                                                    <input type="file" name="bukti_pembayaran[]" id="bukti_pembayaran" accept="image/*" multiple
                                                         @change="previewImages($event)"
                                                         class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
-                                                </div>
-
-                                                <div x-show="imagePreviews.length > 0" style="display: none;" class="w-full flex justify-center flex-wrap gap-2 border-2 border-dashed border-teal-200 rounded-2xl p-2 bg-gray-50 mt-1">
-                                                    <template x-for="(img, idx) in imagePreviews" :key="idx">
-                                                    <div class="relative w-[150px] aspect-[9/16] bg-black bg-opacity-5 rounded-xl overflow-hidden shadow-inner flex items-center justify-center mb-1">
-                                                        <img :src="img" class="w-full h-full object-contain" alt="Preview Bukti">
-                                                        <button type="button" @click="imagePreviews.splice(idx, 1); if(imagePreviews.length === 0){document.getElementById('bukti_pembayaran').value = '';}" class="absolute top-2 right-2 bg-white text-red-500 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center shadow-md font-bold hover:bg-red-50">
-                                                            ✕
-                                                        </button>
+                                                    
+                                                    <div x-show="imagePreviews.length > 0" style="display: none;" class="w-full flex justify-center flex-wrap gap-2 border-2 border-dashed border-teal-200 rounded-2xl p-2 bg-gray-50 mt-2">
+                                                        <template x-for="(img, idx) in imagePreviews" :key="idx">
+                                                        <div class="relative w-[150px] aspect-[9/16] bg-black bg-opacity-5 rounded-xl overflow-hidden shadow-inner flex items-center justify-center mb-1">
+                                                            <img :src="img" class="w-full h-full object-contain" alt="Preview Bukti">
+                                                            <button type="button" @click="imagePreviews.splice(idx, 1); if(imagePreviews.length === 0){document.getElementById('bukti_pembayaran').value = '';}" class="absolute top-2 right-2 bg-white text-red-500 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center shadow-md font-bold hover:bg-red-50">
+                                                                ✕
+                                                            </button>
+                                                        </div>
+                                                        </template>
                                                     </div>
-                                                    </template>
                                                 </div>
 
-                                                <button type="button" @click="submitForm()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border border-yellow-300 hover:shadow-lg hover:-translate-y-1">
+                                                <!-- OPSI 2: PISAH -->
+                                                <div x-show="uploadMethod === 'pisah'" class="flex flex-col gap-3 mt-1 max-h-[40vh] overflow-y-auto pr-1">
+                                                    <template x-for="(group, gIdx) in photoGroups" :key="group.id">
+                                                        <div class="p-3 bg-gray-50 border border-teal-200 rounded-xl relative">
+                                                            <div class="flex justify-between items-center mb-2">
+                                                                <span class="text-xs font-bold text-teal-800 bg-teal-100 px-2 py-1 rounded-md">Foto <span x-text="gIdx + 1"></span></span>
+                                                                <button type="button" x-show="photoGroups.length > 1" @click="removePhotoGroup(gIdx)" class="text-red-500 text-xs font-bold hover:text-red-700 bg-red-50 px-2 py-1 rounded-md border border-red-200">Hapus</button>
+                                                            </div>
+                                                            
+                                                            <input type="file" :name="'bukti_pembayaran_pisah[' + gIdx + ']'" accept="image/*"
+                                                                @change="
+                                                                    let file = $event.target.files[0];
+                                                                    if (file) { group.preview = URL.createObjectURL(file); }
+                                                                "
+                                                                class="bukti_pisah w-full text-xs mb-2 file:mr-2 file:py-1 file:px-3 file:rounded-full file:text-[10px] file:font-bold file:bg-white file:text-teal-700 file:border file:border-teal-200 hover:file:bg-teal-50">
+                                                                
+                                                            <div x-show="group.preview" class="w-full flex justify-center mb-3">
+                                                                <img :src="group.preview" class="h-28 rounded-lg shadow-sm border border-gray-200 object-contain bg-white">
+                                                            </div>
+                                                            
+                                                            <div class="text-[11px] font-bold text-gray-700 mb-1.5">Tandai Bulan: <span class="font-normal text-gray-500 text-[10px]">(Pilih minimal 1)</span></div>
+                                                            <div class="flex flex-wrap gap-1.5">
+                                                                <template x-for="id in selected" :key="id">
+                                                                    <label class="flex items-center gap-1 border border-gray-200 px-2 py-1 rounded-md text-[10px] cursor-pointer shadow-sm transition-colors"
+                                                                        :class="group.months.includes(id) ? 'border-teal-500 bg-teal-50 text-teal-800 font-bold' : 'bg-white text-gray-500 hover:bg-gray-50'">
+                                                                        <input type="checkbox" :name="'bukti_pembayaran_months[' + gIdx + '][]'" :value="id" x-model="group.months" class="hidden">
+                                                                        <span x-text="payableMonths[id]"></span>
+                                                                    </label>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                    
+                                                    <button type="button" @click="addPhotoGroup()" class="w-full py-2 bg-teal-50 text-teal-700 text-xs font-bold rounded-xl border-2 border-dashed border-teal-300 hover:bg-teal-100 transition-colors shadow-sm">
+                                                        + Tambah Foto Lain
+                                                    </button>
+                                                </div>
+
+                                                <button type="button" @click="submitForm()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-extrabold py-3 px-4 rounded-2xl shadow-md flex justify-center items-center gap-2 transition-all duration-200 active:scale-95 border border-yellow-300 hover:shadow-lg hover:-translate-y-1 mt-2">
                                                     <svg class="w-5 h-5 mb-0.5 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                     </svg>
