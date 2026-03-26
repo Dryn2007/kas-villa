@@ -97,6 +97,15 @@
                                     removePhotoGroup(idx) {
                                         this.photoGroups.splice(idx, 1);
                                     },
+                                    
+                                    isMonthAvailableForGroup(id, currentGroupIdx) {
+                                        for(let i = 0; i < this.photoGroups.length; i++) {
+                                            if (i !== currentGroupIdx && this.photoGroups[i].months.includes(id)) {
+                                                return false;
+                                            }
+                                        }
+                                        return true;
+                                    },
 
                                     getTotalNominal() {
                                         return this.selected.reduce((sum, id) => sum + (this.payableNominals[id] || 0), 0);
@@ -374,7 +383,7 @@
                                                             <div class="text-[11px] font-bold text-gray-700 mb-1.5">Tandai Bulan: <span class="font-normal text-gray-500 text-[10px]">(Pilih minimal 1)</span></div>
                                                             <div class="flex flex-wrap gap-1.5">
                                                                 <template x-for="id in selected" :key="id">
-                                                                    <label class="flex items-center gap-1 border border-gray-200 px-2 py-1 rounded-md text-[10px] cursor-pointer shadow-sm transition-colors"
+                                                                    <label x-show="isMonthAvailableForGroup(id, gIdx)" class="flex items-center gap-1 border border-gray-200 px-2 py-1 rounded-md text-[10px] cursor-pointer shadow-sm transition-colors"
                                                                         :class="group.months.includes(id) ? 'border-teal-500 bg-teal-50 text-teal-800 font-bold' : 'bg-white text-gray-500 hover:bg-gray-50'">
                                                                         <input type="checkbox" :name="'bukti_pembayaran_months[' + gIdx + '][]'" :value="id" x-model="group.months" class="hidden">
                                                                         <span x-text="payableMonths[id]"></span>
