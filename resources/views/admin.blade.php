@@ -62,7 +62,9 @@
                     $months = $group->sortBy('bulan_ke')->map(function($p) {
                         return \Carbon\Carbon::create(2026, 3)->addMonths($p->bulan_ke)->translatedFormat('F Y');
                     })->implode(', ');
-                    $buktiArray = $firstPending->bukti_pembayaran ? explode(',', $firstPending->bukti_pembayaran) : [];
+                    
+                    // Group bukti pembayaran unik di dalam submission ini
+                    $buktiGroups = $group->filter(function($p) { return !empty($p->bukti_pembayaran); })->groupBy('bukti_pembayaran');
                 @endphp
                 <div class="bg-white rounded-3xl p-5 shadow-sm border border-yellow-200 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-2 h-full bg-yellow-400"></div>
@@ -90,14 +92,29 @@
                             {{ number_format($totalNominal, 0, ',', '.') }}</span>
                     </div>
 
-                    @if(count($buktiArray) > 0)
+                    @if($buktiGroups->count() > 0)
                     <div class="mb-4 ml-2">
                         <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Bukti Pembayaran</p>
-                        <div class="flex gap-2 overflow-x-auto pb-2">
-                            @foreach($buktiArray as $buktiUrl)
-                            <a href="{{ trim($buktiUrl) }}" target="_blank" class="flex-shrink-0">
-                                <img src="{{ trim($buktiUrl) }}" alt="Bukti Transfer" class="w-24 h-32 object-cover rounded-xl border border-gray-200 shadow-sm hover:opacity-90 transition">                                                                                                                                                                                        
-                            </a>
+                        <div class="flex flex-wrap gap-4 pb-2">
+                            @foreach($buktiGroups as $buktiUrlString => $itemsSameFoto)
+                                @php
+                                    $monthsForFoto = $itemsSameFoto->sortBy('bulan_ke')->map(function($p) {
+                                        return \Carbon\Carbon::create(2026, 3)->addMonths($p->bulan_ke)->translatedFormat('F');
+                                    })->implode(', ');
+                                    $urls = explode(',', $buktiUrlString);
+                                @endphp
+                                <div class="flex-shrink-0 flex flex-col items-start bg-gray-50 p-2 rounded-xl border border-gray-100 relative">
+                                    <div class="flex gap-2">
+                                        @foreach($urls as $url)
+                                            <a href="{{ trim($url) }}" target="_blank">
+                                                <img src="{{ trim($url) }}" alt="Bukti Transfer" class="w-20 h-28 object-cover rounded-lg shadow-sm hover:opacity-90 transition">
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                    @if($buktiGroups->count() > 1 || count($urls) > 0) 
+                                        <p class="text-[10px] text-teal-800 font-bold mt-2 bg-teal-50 border border-teal-100 px-2 py-1 rounded w-full text-center shadow-sm">{{ $monthsForFoto }}</p>
+                                    @endif
+                                </div>
                             @endforeach
                         </div>
                     </div>

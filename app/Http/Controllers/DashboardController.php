@@ -127,6 +127,7 @@ class DashboardController extends Controller
 
             $statusBaru = 'proses';
             $pesan = 'Sip! ' . count($submittedIds) . ' bulan tagihan beserta bukti pembayaran berhasil dikirim. Menunggu konfirmasi Admin. ⏳';
+            $waktuUpdate = now();
 
             if ($uploadMethod === 'satu') {
                 $files = Arr::wrap($request->file('bukti_pembayaran'));
@@ -162,7 +163,7 @@ class DashboardController extends Controller
                 Pembayaran::whereIn('id', $submittedIds)->update([
                     'status' => $statusBaru,
                     'bukti_pembayaran' => $buktiUrlStr,
-                    'updated_at' => now()
+                    'updated_at' => $waktuUpdate
                 ]);
             } else {
                 // Metode upload pisah (Tandai bukti pembayaran perfoto)
@@ -210,7 +211,7 @@ class DashboardController extends Controller
                         Pembayaran::where('id', $tid)->update([
                             'status' => $statusBaru,
                             'bukti_pembayaran' => implode(',', $urls),
-                            'updated_at' => now()
+                            'updated_at' => $waktuUpdate
                         ]);
                     }
                 }
@@ -220,7 +221,7 @@ class DashboardController extends Controller
                 if (!empty($unupdatedIds)) {
                     Pembayaran::whereIn('id', $unupdatedIds)->update([
                         'status' => $statusBaru,
-                        'updated_at' => now()
+                        'updated_at' => $waktuUpdate
                     ]);
                 }
             }

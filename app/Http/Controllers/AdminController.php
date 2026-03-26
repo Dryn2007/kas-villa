@@ -24,7 +24,8 @@ class AdminController extends Controller
             ->orderBy('updated_at', 'asc')
             ->get()
             ->groupBy(function ($item) {
-                return $item->user_id . '_' . $item->bukti_pembayaran;
+                // Kelompokkan per user dan per submit barengan (via updated_at)
+                return $item->user_id . '_' . $item->updated_at->format('Y-m-d H:i:s');
             });
 
         // Ambil seluruh warga beserta data pembayarannya untuk fitur Kelola KK dan Pelunasan Manual
