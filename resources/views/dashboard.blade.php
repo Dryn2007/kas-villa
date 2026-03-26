@@ -153,8 +153,13 @@
                                         } else {
                                             // Validasi untuk metode pisah
                                             let hasEmptyFile = false;
+                                            let hasEmptyMonths = false;
                                             document.querySelectorAll('.bukti_pisah').forEach(input => {
                                                 if (!input.value) hasEmptyFile = true;
+                                            });
+                                            
+                                            this.photoGroups.forEach(group => {
+                                                if (group.months.length === 0) hasEmptyMonths = true;
                                             });
                                             
                                             if (hasEmptyFile || this.photoGroups.length === 0) {
@@ -162,6 +167,16 @@
                                                     icon: 'warning',
                                                     title: 'Oops...',
                                                     text: 'Pastikan SEMUA foto telah diupload.',
+                                                    confirmButtonColor: '#0d9488'
+                                                });
+                                                return;
+                                            }
+                                            
+                                            if (hasEmptyMonths) {
+                                                Swal.fire({
+                                                    icon: 'warning',
+                                                    title: 'Oops...',
+                                                    text: 'Tandai minimal 1 bulan untuk setiap foto! Pilihan bulan tidak boleh kosong.',
                                                     confirmButtonColor: '#0d9488'
                                                 });
                                                 return;
@@ -385,7 +400,8 @@
                                                                 <template x-for="id in selected" :key="id">
                                                                     <label x-show="isMonthAvailableForGroup(id, gIdx)" class="flex items-center gap-1 border border-gray-200 px-2 py-1 rounded-md text-[10px] cursor-pointer shadow-sm transition-colors"
                                                                         :class="group.months.includes(id) ? 'border-teal-500 bg-teal-50 text-teal-800 font-bold' : 'bg-white text-gray-500 hover:bg-gray-50'">
-                                                                        <input type="checkbox" :name="'bukti_pembayaran_months[' + gIdx + '][]'" :value="id" x-model="group.months" class="hidden">
+                                                                        <input type="checkbox" :name="'bukti_pembayaran_months[' + gIdx + '][]'" :value="id" x-model="group.months" class="hidden"
+                                                                            @click="if(!group.months.includes(id) && group.months.length >= selected.length - 1) { $event.preventDefault(); Swal.fire({icon: 'warning', title: 'Batas Pilihan', text: 'Sisakan minimal 1 bulan untuk foto lainnya!', confirmButtonColor: '#0d9488'}); }">
                                                                         <span x-text="payableMonths[id]"></span>
                                                                     </label>
                                                                 </template>
